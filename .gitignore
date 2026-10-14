@@ -1,0 +1,9 @@
+# dados e resultados (grandes, gerados na sua máquina)
+dados/
+resultados/
+resultados_teste_rapido/
+dados_falsos/
+*.pt
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
