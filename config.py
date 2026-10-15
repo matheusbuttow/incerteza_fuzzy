@@ -15,7 +15,9 @@ from pathlib import Path
 
 # ----------------------------------------------------------------------------- caminhos
 DADOS = Path("dados")                                  # CIFAR, SVHN e MNIST são baixados aqui automaticamente
-HAM_DIR = Path("dados/ham10000")                       # HAM10000_metadata.csv + pastas HAM10000_images_part_1 e _part_2
+# Pasta que contém o HAM10000_metadata.csv. Usa a primeira que existir; para outro lugar, troque por Path("...").
+HAM_DIR = next((p for p in [Path("dados/ham10000"), Path("dados/archive")] if (p / "HAM10000_metadata.csv").exists()),
+               Path("dados/ham10000"))
 SAIDA = Path("resultados")
 
 # ----------------------------------------------------------------------------- o que rodar
