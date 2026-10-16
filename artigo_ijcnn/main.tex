@@ -1,0 +1,129 @@
+% =====================================================================
+% Template IJCNN (IEEE conference) — incerteza_fuzzy
+% No Overleaf: New Project > Upload Project (zip desta pasta). O IEEEtran.cls já vem no Overleaf.
+% Regras usuais da IJCNN (CONFIRA no site da IJCNN 2027 quando a chamada sair):
+%   - 6 a 8 páginas COM referências; até 2 extras pagas
+%   - revisão duplo-cego: sem nomes, sem agradecimentos, citar trabalho próprio em 3ª pessoa
+%   - A4, duas colunas, Times 10 pt, sem número de página
+% =====================================================================
+\documentclass[conference,a4paper]{IEEEtran}
+\IEEEoverridecommandlockouts
+
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx}
+\usepackage{booktabs,multirow}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage[hidelinks]{hyperref}
+
+\newcommand{\todo}[1]{\textcolor{red}{[TODO: #1]}}
+
+\begin{document}
+
+\title{Reading the Network from the Inside: Interpretable Additive Fuzzy Rules\\
+for Detecting Misclassifications of Deep Classifiers}
+
+% ---- versão para submissão (duplo-cego) ----
+\author{\IEEEauthorblockN{Anonymous Authors}}
+% ---- versão final (camera-ready): descomente e apague a linha acima ----
+% \author{\IEEEauthorblockN{Matheus Buttow}
+% \IEEEauthorblockA{\textit{Programa de Pós-Graduação em ...} \\
+% \textit{Universidade ...}\\
+% Cidade, Brasil \\
+% matheusbuttow@gmail.com}}
+
+\maketitle
+
+\begin{abstract}
+Deep classifiers often fail with high confidence, which is critical in medical applications such as skin-cancer screening.
+We propose an interpretable uncertainty detector that reads the network's internal behavior---linear probes at each block,
+agreement across augmented views, and disagreement among nearest neighbors in feature space---and combines these signals
+with an additive fuzzy model: a zero-order Takagi--Sugeno system with single-antecedent rules and logistic output.
+Each rule has a readable form (``IF final-layer agreement is LOW THEN risk of error increases'') and a learned weight.
+On HAM10000 (benign vs.\ malignant, EfficientNet-B0) and seven additional scenarios (CIFAR-10 with and without label noise,
+CIFAR-100, SVHN, MNIST), the method matches or exceeds the best baseline in all scenarios
+(AUROC 0.916 on HAM10000 and 0.903 on CIFAR-10 with 30\% label noise), is significantly better than Chen et al.\ in
+18 of 26 runs and never significantly worse, and explains each decision through its rules.
+\todo{ajustar números finais}
+\end{abstract}
+
+\begin{IEEEkeywords}
+uncertainty estimation, misclassification detection, fuzzy systems, interpretability, skin lesion classification
+\end{IEEEkeywords}
+
+% =====================================================================
+\section{Introduction}
+\todo{Problema: rede erra com confiança; custo do erro em dermatologia; encaminhar casos incertos ao especialista.}
+
+\todo{Lacuna: métodos de incerteza usam só a saída (softmax, MC Dropout, TTA) ou são caixas-pretas (Chen et al.~\cite{chen2019}, ConfidNet~\cite{corbiere2019}).}
+
+Contributions:
+\begin{itemize}
+  \item an internal reading of the network (probes, views, neighbors) summarized in a few interpretable features;
+  \item an additive fuzzy detector whose rules are stable across resamplings (weight correlation 0.91--0.99);
+  \item a comparison against classical and recent detectors on eight scenarios, with paired bootstrap tests.
+\end{itemize}
+
+% =====================================================================
+\section{Related Work}
+\subsection{Uncertainty and misclassification detection}
+Softmax confidence~\cite{hendrycks2017}, MC Dropout~\cite{gal2016}, Mahalanobis~\cite{lee2018}, Deep kNN~\cite{papernot2018},
+ConfidNet~\cite{corbiere2019}. \todo{completar}
+
+\subsection{Meta-models on internal representations}
+Chen et al.~\cite{chen2019}, Font et al.~\cite{font2025}, Gorbett and Blanchard~\cite{gorbett2022}. \todo{completar}
+
+\subsection{Fuzzy systems for uncertainty}
+Wang--Mendel~\cite{wangmendel1992}, Takagi--Sugeno~\cite{takagi1985}. \todo{completar}
+
+% =====================================================================
+\section{Method}
+\subsection{Reading the network}
+\todo{probes por bloco (trocas de opinião, profundidade da decisão, entropia dos probes, concordância no fim, salto final);
+vistas (TTA); vizinhos.}
+
+\subsection{Additive fuzzy model}
+Each feature $x_j$ is covered by three triangular terms (LOW, MEDIUM, HIGH) centred at its 5th, 50th and 95th percentiles;
+for the network output $P$ in the binary case the centres are fixed at $\{0, \tau, 1\}$, where $\tau$ is the decision threshold.
+The risk of error is
+\begin{equation}
+  r(\mathbf{x}) = \sigma\Big(b + \sum_{j=1}^{d}\sum_{k=1}^{3} w_{jk}\,\mu_{jk}(x_j)\Big),
+\end{equation}
+where $\mu_{jk}$ is the membership of $x_j$ in term $k$ and $w_{jk}$ is the weight of rule
+``IF $x_j$ is $k$ THEN risk changes by $w_{jk}$''. Weights are learned by logistic regression.
+
+\begin{figure}[t]
+\centering
+\IfFileExists{figuras/pertinencias.png}{\includegraphics[width=\columnwidth]{figuras/pertinencias.png}}{\fbox{\parbox{0.9\columnwidth}{\centering\vspace{1cm}
+coloque figuras/pertinencias.png (gerada por mostrar\_pertinencias.py)\vspace{1cm}}}}
+\caption{Membership functions and rule weights of the additive fuzzy model on HAM10000. \todo{legenda}}
+\label{fig:pertinencias}
+\end{figure}
+
+\subsection{Feature selection}
+\todo{seleção por AUROC além de P; P sempre incluído; 4 features.}
+
+% =====================================================================
+\section{Experimental Setup}
+\todo{datasets, redes, sementes, 5 folds, métricas: AUROC, AUPR, FPR@95, E-AURC, erros encontrados encaminhando 10/20/30\%.}
+
+% =====================================================================
+\section{Results}
+% As tabelas vêm de tabelas_latex.py. Apague do arquivo as que não couberem.
+\input{tabelas_en}
+
+\todo{discussão: ganho maior quando a confiança de saída é pouco confiável (ruído, ambiguidade clínica); empate no HAM com Chen e Só P;
+biópsia: 26\% de erro com histopatologia vs.\ 2.5\% sem.}
+
+% =====================================================================
+\section{Conclusion}
+\todo{}
+
+% Duplo-cego: sem agradecimentos na submissão.
+% \section*{Acknowledgment}
+
+\bibliographystyle{IEEEtran}
+\bibliography{refs}
+
+\end{document}
