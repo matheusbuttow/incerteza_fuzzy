@@ -69,30 +69,53 @@ def fmt(x, nd=3):
     return f"{x:.{nd}f}"
 
 
+def sinal(x, nd=3):
+    return f"{x:+.{nd}f}".replace("-", "$-$")
+
+
+def duas(txt):
+    """Cabeçalho em duas linhas sem pacote extra: 'CIFAR-10 (VGG)' -> CIFAR-10 / (VGG)."""
+    a, sep, b = txt.partition(" (") if " (" in txt else txt.rpartition(" ")
+    if not sep:
+        return txt
+    b = ("(" + b) if sep == " (" else b
+    return f"\\begin{{tabular}}[c]{{@{{}}c@{{}}}}{a}\\\\{b}\\end{{tabular}}"
+
+
+def ambiente(tipo, cap, label, largura, colunas, cab, corpo, nota=""):
+    linhas = "\n".join("  " + l for l in corpo)
+    return (f"\\begin{{{tipo}}}[t]\n\\centering\n\\caption{{{cap}}}\n\\label{{{label}}}\n"
+            f"\\resizebox{{{largura}}}{{!}}{{%\n\\begin{{tabular}}{{{colunas}}}\n  \\toprule\n  {cab} \\\\\n  \\midrule\n"
+            f"{linhas}\n  \\bottomrule\n\\end{{tabular}}}}\n" + (f"\n\\vspace{{2pt}}\n{{\\footnotesize {nota}}}\n" if nota else "")
+            + f"\\end{{{tipo}}}\n")
+
+
+def nomes(L):
+    return {m: (pt if L == "pt" else en) for m, pt, en, _ in METODOS}
+
+
 def t_auroc(md, L, exps):
-    t, nm = T[L], {m: (pt if L == "pt" else en) for m, pt, en, _ in METODOS}
+    t, nm = T[L], nomes(L)
     piv_m = md.pivot(index="método", columns="experimento", values="AUROC (média)")
     piv_s = md.pivot(index="método", columns="experimento", values="AUROC (desvio)")
-    melhor = piv_m[exps].max()
-    lin, grupo = [], 0
+    melhor = piv_m[exps].max().round(3)
+    corpo, grupo = [], None
     for m, *_, g in METODOS:
         if m not in piv_m.index:
             continue
-        if g != grupo:
-            lin.append("\\midrule"); grupo = g
+        if grupo is not None and g != grupo:
+            corpo.append("\\midrule")
+        grupo = g
         cel = []
         for e in exps:
-            v, s = piv_m.loc[m, e], piv_s.loc[m, e]
+            v, s_ = piv_m.loc[m, e], piv_s.loc[m, e]
             if pd.isna(v):
                 cel.append("--"); continue
-            c = f"{fmt(v)}$\\pm${fmt(s)}"
-            cel.append(f"\\textbf{{{c}}}" if round(v, 3) == round(melhor[e], 3) else c)
-        lin.append(nm[m] + " & " + " & ".join(cel) + " \\\\")
-    cab = " & ".join(f"\\rotatebox{{0}}{{{CENARIO[L][e]}}}" for e in exps)
-    return ("\\begin{table*}[t]\n\\centering\n\\caption{" + t["cap1"] + "}\n\\label{tab:auroc}\n\\resizebox{\\textwidth}{!}{%\n"
-            "\\begin{tabular}{l" + "c" * len(exps) + "}\n\\toprule\n" + t["metodo"] + " & " + cab + " \\\\\n\\midrule\n"
-            + "\n".join(lin[1:] if lin and lin[0] == "\\midrule" else lin) + "\n\\bottomrule\n\\end{tabular}}\n\n\\vspace{2pt}\n"
-            "\\footnotesize " + t["nota1"] + "\n\\end{table*}\n")
+            num = f"\\textbf{{{fmt(v)}}}" if round(v, 3) == melhor[e] else fmt(v)
+            cel.append(f"{num}\\,{{\\scriptsize$\\pm${fmt(s_)}}}")
+        corpo.append(nm[m] + " & " + " & ".join(cel) + " \\\\")
+    cab = t["metodo"] + " & " + " & ".join(duas(CENARIO[L][e]) for e in exps)
+    return ambiente("table*", t["cap1"], "tab:auroc", "\\textwidth", "l" + "c" * len(exps), cab, corpo, t["nota1"])
 
 
 def encontrados(ps, rd):
@@ -104,62 +127,69 @@ def encontrados(ps, rd):
 
 
 def t_encontrados(ps, rd, L, exps):
-    t, nm = T[L], {m: (pt if L == "pt" else en) for m, pt, en, _ in METODOS}
-    enc = encontrados(ps, rd); lin = []
-    for e in exps:
+    t, nm = T[L], nomes(L)
+    enc = encontrados(ps, rd)
+
+    def bloco(e, primeiro):
         g = enc.loc[e]; esc = 10000 if e == "mnist" else 1000; E = g.taxa.mean() * esc
-        binario = CLASSES[e] == 2
-        lin.append(f"\\midrule\n\\multicolumn{{4}}{{l}}{{\\textit{{{CENARIO[L][e]}}} --- {E:.0f} {t['erros']}}} \\\\")
-        lin.append(t["acaso"] + " & " + " & ".join(f"{E * f / 100:.0f} ({f}\\%)" for f in (10, 20, 30)) + " \\\\")
+        binario = CLASSES[e] == 2; c = [] if primeiro else ["\\midrule"]
+        por = (" (" + ("a cada 10.000" if L == "pt" else "per 10,000") + ")") if esc == 10000 else ""
+        c.append(f"\\multicolumn{{4}}{{@{{}}l}}{{\\textit{{{CENARIO[L][e]}}} --- {E:.0f} {t['erros']}{por}}} \\\\")
+        c.append(t["acaso"] + " & " + " & ".join(f"{E * f / 100:.0f} ({f}\\%)" for f in (10, 20, 30)) + " \\\\")
         ms = [m for m in CURTOS if m in g.index and (binario or m != "Só P")]
         vals = {m: [g.loc[m, f"c{f}"] * esc for f in (10, 20, 30)] for m in ms}
         top = [max(round(v[k]) for v in vals.values()) for k in range(3)]
         for m in ms:
             cel = [f"{round(v):d} ({100 * v / E:.0f}\\%)" for v in vals[m]]
-            cel = [f"\\textbf{{{c}}}" if round(vals[m][k]) == top[k] else c for k, c in enumerate(cel)]
-            nome = nm[m].replace("$^\\dagger$", "") if binario else nm[m]
+            cel = [f"\\textbf{{{x}}}" if round(vals[m][k]) == top[k] else x for k, x in enumerate(cel)]
+            nome = nm[m].replace("$^\\dagger$", "")
             if m == "Softmax (MSP)" and not binario:
                 nome += " = " + nm["Só P"].replace("$^\\dagger$", "")
-            lin.append(nome + " & " + " & ".join(cel) + " \\\\")
-    cab = " & ".join(f"{t['rev']} {f}\\%" for f in (10, 20, 30))
-    return ("\\begin{table}[t]\n\\centering\n\\caption{" + t["cap2"] + "}\n\\label{tab:encontrados}\n\\resizebox{\\columnwidth}{!}{%\n"
-            "\\begin{tabular}{lccc}\n\\toprule\n" + t["metodo"] + " & " + cab + " \\\\\n" + "\n".join(lin)
-            + "\n\\bottomrule\n\\end{tabular}}\n\\end{table}\n")
+            c.append(nome + " & " + " & ".join(cel) + " \\\\")
+        return c
+
+    cab = t["metodo"] + " & " + " & ".join(duas(f"{t['rev']} {f}\\%") for f in (10, 20, 30))
+    meio = (len(exps) + 1) // 2
+    lados = []
+    for parte in (exps[:meio], exps[meio:]):
+        corpo = [l for i, e in enumerate(parte) for l in bloco(e, i == 0)]
+        lados.append("\\begin{minipage}[t]{0.495\\textwidth}\n\\centering\n\\scriptsize\\setlength{\\tabcolsep}{3pt}\n"
+                     "\\begin{tabular}[t]{lccc}\n  \\toprule\n  " + cab + " \\\\\n  \\midrule\n"
+                     + "\n".join("  " + l for l in corpo) + "\n  \\bottomrule\n\\end{tabular}\n\\end{minipage}")
+    return ("\\begin{table*}[t]\n\\centering\n\\caption{" + t["cap2"] + "}\n\\label{tab:encontrados}\n"
+            + lados[0] + "\\hfill\n" + lados[1] + "\n\\end{table*}\n")
 
 
 def t_ganho(md, rd, L, exps):
     t = T[L]; piv = md.pivot(index="método", columns="experimento", values="AUROC (média)")
     taxa = (rd["erros da rede"] / rd["imagens de teste"]).groupby(rd.experimento).mean()
-    ordem = sorted(exps, key=lambda e: piv.loc["NOSSO: Fuzzy aditivo", e] - piv.loc["Softmax (MSP)", e])
-    lin = [f"{CENARIO[L][e]} & {CLASSES[e]} & {100 * taxa[e]:.1f}\\% & {fmt(piv.loc['Softmax (MSP)', e])} & "
-           f"{fmt(piv.loc['NOSSO: Fuzzy aditivo', e])} & {piv.loc['NOSSO: Fuzzy aditivo', e] - piv.loc['Softmax (MSP)', e]:+.3f} \\\\"
-           for e in ordem]
+    g = {e: piv.loc["NOSSO: Fuzzy aditivo", e] - piv.loc["Softmax (MSP)", e] for e in exps}
+    dec = "," if L == "pt" else "."
+    corpo = [f"{CENARIO[L][e]} & {CLASSES[e]} & {100 * taxa[e]:.1f}\\% & {fmt(piv.loc['Softmax (MSP)', e])} & "
+             f"{fmt(piv.loc['NOSSO: Fuzzy aditivo', e])} & {sinal(g[e])} \\\\" for e in sorted(exps, key=g.get)]
     ad = "Fuzzy aditivo" if L == "pt" else "Additive fuzzy"
-    return ("\\begin{table}[t]\n\\centering\n\\caption{" + t["cap3"] + "}\n\\label{tab:ganho}\n\\resizebox{\\columnwidth}{!}{%\n"
-            "\\begin{tabular}{lccccc}\n\\toprule\n" + f"{t['cen']} & {t['cl']} & {t['taxa']} & Softmax & {ad} & {t['ganho']}"
-            " \\\\\n\\midrule\n" + "\n".join(lin) + "\n\\bottomrule\n\\end{tabular}}\n\\end{table}\n")
+    cab = f"{t['cen']} & {t['cl']} & {duas(t['taxa'])} & Softmax & {duas(ad)} & {t['ganho']}"
+    return ambiente("table", t["cap3"], "tab:ganho", "\\columnwidth", "lccccc", cab, corpo)
 
 
 def t_signif(nv, L, exps):
     t = T[L]; a = nv[nv["método"] == "NOSSO: Fuzzy aditivo"].set_index("experimento")
     cols = ["sementes com ganho significativo sobre Chen", "sementes com perda significativa para Chen",
             "sementes com ganho significativo sobre só P", "sementes"]
-    lin = [f"{CENARIO[L][e]} & " + " & ".join(str(int(a.loc[e, c])) for c in cols) + " \\\\" for e in exps]
+    corpo = [f"{CENARIO[L][e]} & " + " & ".join(str(int(a.loc[e, c])) for c in cols) + " \\\\" for e in exps]
     tot = [int(a.loc[exps, c].sum()) for c in cols]
-    return ("\\begin{table}[t]\n\\centering\n\\caption{" + t["cap4"] + "}\n\\label{tab:signif}\n\\resizebox{\\columnwidth}{!}{%\n"
-            "\\begin{tabular}{lcccc}\n\\toprule\n" + f"{t['cen']} & {t['gc']} & {t['pc']} & {t['gp']} & {t['sem']}"
-            " \\\\\n\\midrule\n" + "\n".join(lin) + f"\n\\midrule\n{t['total']} & " + " & ".join(map(str, tot))
-            + " \\\\\n\\bottomrule\n\\end{tabular}}\n\\end{table}\n")
+    corpo += ["\\midrule", f"\\textbf{{{t['total']}}} & " + " & ".join(f"\\textbf{{{v}}}" for v in tot) + " \\\\"]
+    cab = f"{t['cen']} & {duas(t['gc'])} & {duas(t['pc'])} & {duas(t['gp'])} & {t['sem']}"
+    return ambiente("table", t["cap4"], "tab:signif", "\\columnwidth", "lcccc", cab, corpo)
 
 
 def t_redes(rd, L, exps):
-    t = T[L]; g = rd.groupby("experimento")
-    lin = [f"{CENARIO[L][e]} & {ARQ[e]} & {CLASSES[e]} & {g.get_group(e)['imagens de teste'].mean():,.0f} & "
-           f"{g.get_group(e)['acurácia teste'].mean():.3f} & {len(g.get_group(e))} \\\\".replace(",", "." if L == "pt" else ",")
-           for e in exps]
-    return ("\\begin{table}[t]\n\\centering\n\\caption{" + t["cap5"] + "}\n\\label{tab:redes}\n\\resizebox{\\columnwidth}{!}{%\n"
-            "\\begin{tabular}{llcccc}\n\\toprule\n" + f"{t['cen']} & {t['arq']} & {t['cl']} & {t['teste']} & {t['acc']} & {t['sem']}"
-            " \\\\\n\\midrule\n" + "\n".join(lin) + "\n\\bottomrule\n\\end{tabular}}\n\\end{table}\n")
+    t = T[L]; g = rd.groupby("experimento"); mil = "." if L == "pt" else ","
+    corpo = [f"{CENARIO[L][e]} & {ARQ[e]} & {CLASSES[e]} & "
+             + f"{g.get_group(e)['imagens de teste'].mean():,.0f}".replace(",", mil)
+             + f" & {g.get_group(e)['acurácia teste'].mean():.3f} & {len(g.get_group(e))} \\\\" for e in exps]
+    cab = f"{t['cen']} & {t['arq']} & {t['cl']} & {duas(t['teste'])} & {t['acc']} & {t['sem']}"
+    return ambiente("table", t["cap5"], "tab:redes", "\\columnwidth", "llcccc", cab, corpo)
 
 
 if __name__ == "__main__":
@@ -170,7 +200,10 @@ if __name__ == "__main__":
     for L in ("pt", "en"):
         cab = (f"% Gerado por tabelas_latex.py a partir de {xl.name}.\n"
                "% Preâmbulo: \\usepackage{booktabs,multirow,graphicx}\n\n")
-        txt = cab + "\n".join([t_redes(rd, L, exps), t_auroc(md, L, exps), t_encontrados(ps, rd, L, exps),
-                               t_ganho(md, rd, L, exps), t_signif(nv, L, exps)])
+        partes = [t_redes(rd, L, exps), t_auroc(md, L, exps), t_encontrados(ps, rd, L, exps),
+                  t_ganho(md, rd, L, exps), t_signif(nv, L, exps)]
+        titulos = ["Redes", "AUROC", "Erros encontrados", "Ganho sobre o softmax", "Significância"]
+        txt = cab + "\n".join(f"% {'=' * 66}\n% Tabela {i}: {n}\n% {'=' * 66}\n{p}" for i, (n, p) in
+                               enumerate(zip(titulos, partes), 1))
         (xl.parent / f"tabelas_{L}.tex").write_text(txt, encoding="utf-8")
         print(f"{xl.parent / f'tabelas_{L}.tex'}")

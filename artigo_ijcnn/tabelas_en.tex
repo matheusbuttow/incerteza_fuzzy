@@ -1,194 +1,221 @@
 % Gerado por tabelas_latex.py a partir de relatorio.xlsx.
 % Preâmbulo: \usepackage{booktabs,multirow,graphicx}
 
+% ==================================================================
+% Tabela 1: Redes
+% ==================================================================
 \begin{table}[t]
 \centering
 \caption{Evaluated (frozen) networks. Mean over seeds.}
 \label{tab:redes}
 \resizebox{\columnwidth}{!}{%
 \begin{tabular}{llcccc}
-\toprule
-Scenario & Network & Classes & Test images & Accuracy & Seeds \\
-\midrule
-HAM10000 (all) & EfficientNet-B0 & 2 & 1,495 & 0.861 & 5 \\
-HAM10000 (3000) & EfficientNet-B0 & 2 & 601 & 0.831 & 3 \\
-CIFAR-10 30\% noise & ResNet-32 & 10 & 10,000 & 0.865 & 3 \\
-CIFAR-100 & VGG-16 & 100 & 10,000 & 0.731 & 3 \\
-CIFAR-10 (ResNet) & ResNet-32 & 10 & 10,000 & 0.929 & 3 \\
-CIFAR-10 (VGG) & VGG-16 & 10 & 10,000 & 0.937 & 3 \\
-SVHN & CNN & 10 & 26,032 & 0.954 & 3 \\
-MNIST & MLP & 10 & 10,000 & 0.991 & 3 \\
-\bottomrule
+  \toprule
+  Scenario & Network & Classes & \begin{tabular}[c]{@{}c@{}}Test\\images\end{tabular} & Accuracy & Seeds \\
+  \midrule
+  HAM10000 (all) & EfficientNet-B0 & 2 & 1,495 & 0.861 & 5 \\
+  HAM10000 (3000) & EfficientNet-B0 & 2 & 601 & 0.831 & 3 \\
+  CIFAR-10 30\% noise & ResNet-32 & 10 & 10,000 & 0.865 & 3 \\
+  CIFAR-100 & VGG-16 & 100 & 10,000 & 0.731 & 3 \\
+  CIFAR-10 (ResNet) & ResNet-32 & 10 & 10,000 & 0.929 & 3 \\
+  CIFAR-10 (VGG) & VGG-16 & 10 & 10,000 & 0.937 & 3 \\
+  SVHN & CNN & 10 & 26,032 & 0.954 & 3 \\
+  MNIST & MLP & 10 & 10,000 & 0.991 & 3 \\
+  \bottomrule
 \end{tabular}}
 \end{table}
 
+% ==================================================================
+% Tabela 2: AUROC
+% ==================================================================
 \begin{table*}[t]
 \centering
 \caption{AUROC for detecting the network's errors (mean $\pm$ std over seeds). Best mean per scenario in bold.}
 \label{tab:auroc}
 \resizebox{\textwidth}{!}{%
 \begin{tabular}{lcccccccc}
-\toprule
-Method & \rotatebox{0}{HAM10000 (all)} & \rotatebox{0}{HAM10000 (3000)} & \rotatebox{0}{CIFAR-10 30\% noise} & \rotatebox{0}{CIFAR-100} & \rotatebox{0}{CIFAR-10 (ResNet)} & \rotatebox{0}{CIFAR-10 (VGG)} & \rotatebox{0}{SVHN} & \rotatebox{0}{MNIST} \\
-\midrule
-Softmax (MSP) & 0.865$\pm$0.038 & 0.819$\pm$0.099 & 0.797$\pm$0.014 & 0.866$\pm$0.003 & 0.928$\pm$0.004 & 0.915$\pm$0.004 & \textbf{0.926$\pm$0.001} & 0.985$\pm$0.000 \\
-Softmax entropy & 0.865$\pm$0.038 & 0.819$\pm$0.099 & 0.778$\pm$0.015 & 0.867$\pm$0.003 & 0.928$\pm$0.004 & 0.914$\pm$0.004 & 0.924$\pm$0.001 & 0.984$\pm$0.000 \\
-Distance to threshold & 0.862$\pm$0.013 & 0.842$\pm$0.069 & -- & -- & -- & -- & -- & -- \\
-TTA & 0.864$\pm$0.019 & 0.804$\pm$0.067 & 0.810$\pm$0.012 & 0.845$\pm$0.002 & 0.931$\pm$0.003 & 0.931$\pm$0.005 & 0.909$\pm$0.003 & \textbf{0.986$\pm$0.000} \\
-MC Dropout & 0.864$\pm$0.039 & 0.818$\pm$0.100 & 0.779$\pm$0.013 & 0.864$\pm$0.002 & 0.926$\pm$0.004 & 0.910$\pm$0.007 & 0.918$\pm$0.002 & 0.984$\pm$0.001 \\
-Mahalanobis & 0.178$\pm$0.028 & 0.214$\pm$0.091 & 0.695$\pm$0.014 & 0.847$\pm$0.002 & 0.802$\pm$0.009 & 0.918$\pm$0.002 & 0.492$\pm$0.009 & 0.769$\pm$0.015 \\
-Deep kNN & 0.610$\pm$0.012 & 0.585$\pm$0.070 & 0.699$\pm$0.008 & 0.667$\pm$0.002 & 0.738$\pm$0.004 & 0.594$\pm$0.013 & 0.859$\pm$0.005 & 0.888$\pm$0.007 \\
-\midrule
-Output only$^\dagger$ & 0.907$\pm$0.017 & 0.872$\pm$0.060 & 0.797$\pm$0.014 & 0.866$\pm$0.003 & 0.928$\pm$0.004 & 0.915$\pm$0.004 & \textbf{0.926$\pm$0.001} & 0.985$\pm$0.000 \\
-Chen et al.~\cite{chen2019} & 0.909$\pm$0.017 & 0.896$\pm$0.031 & 0.863$\pm$0.005 & 0.871$\pm$0.003 & 0.920$\pm$0.004 & 0.918$\pm$0.002 & 0.921$\pm$0.004 & 0.976$\pm$0.004 \\
-Font et al.~\cite{font2025} & 0.907$\pm$0.019 & 0.886$\pm$0.044 & 0.820$\pm$0.011 & 0.847$\pm$0.003 & 0.886$\pm$0.007 & 0.865$\pm$0.005 & 0.919$\pm$0.003 & 0.976$\pm$0.001 \\
-Gorbett and Blanchard~\cite{gorbett2022} & 0.841$\pm$0.042 & 0.837$\pm$0.078 & 0.880$\pm$0.005 & 0.858$\pm$0.003 & 0.921$\pm$0.006 & 0.922$\pm$0.003 & 0.913$\pm$0.002 & 0.932$\pm$0.031 \\
-ConfidNet~\cite{corbiere2019} & 0.790$\pm$0.032 & 0.757$\pm$0.078 & 0.841$\pm$0.007 & 0.816$\pm$0.003 & 0.901$\pm$0.007 & 0.876$\pm$0.012 & 0.853$\pm$0.006 & 0.792$\pm$0.028 \\
-\midrule
-Wang-Mendel (ours) & 0.888$\pm$0.011 & 0.878$\pm$0.020 & 0.889$\pm$0.004 & 0.831$\pm$0.004 & 0.932$\pm$0.003 & 0.927$\pm$0.004 & 0.912$\pm$0.005 & 0.975$\pm$0.003 \\
-Additive fuzzy, no views (ours) & 0.914$\pm$0.016 & 0.901$\pm$0.048 & 0.896$\pm$0.004 & 0.875$\pm$0.002 & 0.919$\pm$0.004 & 0.922$\pm$0.004 & 0.925$\pm$0.000 & 0.981$\pm$0.000 \\
-\textbf{Additive fuzzy (ours)} & \textbf{0.916$\pm$0.012} & \textbf{0.904$\pm$0.044} & \textbf{0.903$\pm$0.003} & \textbf{0.886$\pm$0.002} & \textbf{0.936$\pm$0.002} & \textbf{0.934$\pm$0.002} & \textbf{0.926$\pm$0.002} & 0.982$\pm$0.000 \\
-\bottomrule
+  \toprule
+  Method & \begin{tabular}[c]{@{}c@{}}HAM10000\\(all)\end{tabular} & \begin{tabular}[c]{@{}c@{}}HAM10000\\(3000)\end{tabular} & \begin{tabular}[c]{@{}c@{}}CIFAR-10 30\%\\noise\end{tabular} & CIFAR-100 & \begin{tabular}[c]{@{}c@{}}CIFAR-10\\(ResNet)\end{tabular} & \begin{tabular}[c]{@{}c@{}}CIFAR-10\\(VGG)\end{tabular} & SVHN & MNIST \\
+  \midrule
+  Softmax (MSP) & 0.865\,{\scriptsize$\pm$0.038} & 0.819\,{\scriptsize$\pm$0.099} & 0.797\,{\scriptsize$\pm$0.014} & 0.866\,{\scriptsize$\pm$0.003} & 0.928\,{\scriptsize$\pm$0.004} & 0.915\,{\scriptsize$\pm$0.004} & \textbf{0.926}\,{\scriptsize$\pm$0.001} & 0.985\,{\scriptsize$\pm$0.000} \\
+  Softmax entropy & 0.865\,{\scriptsize$\pm$0.038} & 0.819\,{\scriptsize$\pm$0.099} & 0.778\,{\scriptsize$\pm$0.015} & 0.867\,{\scriptsize$\pm$0.003} & 0.928\,{\scriptsize$\pm$0.004} & 0.914\,{\scriptsize$\pm$0.004} & 0.924\,{\scriptsize$\pm$0.001} & 0.984\,{\scriptsize$\pm$0.000} \\
+  Distance to threshold & 0.862\,{\scriptsize$\pm$0.013} & 0.842\,{\scriptsize$\pm$0.069} & -- & -- & -- & -- & -- & -- \\
+  TTA & 0.864\,{\scriptsize$\pm$0.019} & 0.804\,{\scriptsize$\pm$0.067} & 0.810\,{\scriptsize$\pm$0.012} & 0.845\,{\scriptsize$\pm$0.002} & 0.931\,{\scriptsize$\pm$0.003} & 0.931\,{\scriptsize$\pm$0.005} & 0.909\,{\scriptsize$\pm$0.003} & \textbf{0.986}\,{\scriptsize$\pm$0.000} \\
+  MC Dropout & 0.864\,{\scriptsize$\pm$0.039} & 0.818\,{\scriptsize$\pm$0.100} & 0.779\,{\scriptsize$\pm$0.013} & 0.864\,{\scriptsize$\pm$0.002} & 0.926\,{\scriptsize$\pm$0.004} & 0.910\,{\scriptsize$\pm$0.007} & 0.918\,{\scriptsize$\pm$0.002} & 0.984\,{\scriptsize$\pm$0.001} \\
+  Mahalanobis & 0.178\,{\scriptsize$\pm$0.028} & 0.214\,{\scriptsize$\pm$0.091} & 0.695\,{\scriptsize$\pm$0.014} & 0.847\,{\scriptsize$\pm$0.002} & 0.802\,{\scriptsize$\pm$0.009} & 0.918\,{\scriptsize$\pm$0.002} & 0.492\,{\scriptsize$\pm$0.009} & 0.769\,{\scriptsize$\pm$0.015} \\
+  Deep kNN & 0.610\,{\scriptsize$\pm$0.012} & 0.585\,{\scriptsize$\pm$0.070} & 0.699\,{\scriptsize$\pm$0.008} & 0.667\,{\scriptsize$\pm$0.002} & 0.738\,{\scriptsize$\pm$0.004} & 0.594\,{\scriptsize$\pm$0.013} & 0.859\,{\scriptsize$\pm$0.005} & 0.888\,{\scriptsize$\pm$0.007} \\
+  \midrule
+  Output only$^\dagger$ & 0.907\,{\scriptsize$\pm$0.017} & 0.872\,{\scriptsize$\pm$0.060} & 0.797\,{\scriptsize$\pm$0.014} & 0.866\,{\scriptsize$\pm$0.003} & 0.928\,{\scriptsize$\pm$0.004} & 0.915\,{\scriptsize$\pm$0.004} & \textbf{0.926}\,{\scriptsize$\pm$0.001} & 0.985\,{\scriptsize$\pm$0.000} \\
+  Chen et al.~\cite{chen2019} & 0.909\,{\scriptsize$\pm$0.017} & 0.896\,{\scriptsize$\pm$0.031} & 0.863\,{\scriptsize$\pm$0.005} & 0.871\,{\scriptsize$\pm$0.003} & 0.920\,{\scriptsize$\pm$0.004} & 0.918\,{\scriptsize$\pm$0.002} & 0.921\,{\scriptsize$\pm$0.004} & 0.976\,{\scriptsize$\pm$0.004} \\
+  Font et al.~\cite{font2025} & 0.907\,{\scriptsize$\pm$0.019} & 0.886\,{\scriptsize$\pm$0.044} & 0.820\,{\scriptsize$\pm$0.011} & 0.847\,{\scriptsize$\pm$0.003} & 0.886\,{\scriptsize$\pm$0.007} & 0.865\,{\scriptsize$\pm$0.005} & 0.919\,{\scriptsize$\pm$0.003} & 0.976\,{\scriptsize$\pm$0.001} \\
+  Gorbett and Blanchard~\cite{gorbett2022} & 0.841\,{\scriptsize$\pm$0.042} & 0.837\,{\scriptsize$\pm$0.078} & 0.880\,{\scriptsize$\pm$0.005} & 0.858\,{\scriptsize$\pm$0.003} & 0.921\,{\scriptsize$\pm$0.006} & 0.922\,{\scriptsize$\pm$0.003} & 0.913\,{\scriptsize$\pm$0.002} & 0.932\,{\scriptsize$\pm$0.031} \\
+  ConfidNet~\cite{corbiere2019} & 0.790\,{\scriptsize$\pm$0.032} & 0.757\,{\scriptsize$\pm$0.078} & 0.841\,{\scriptsize$\pm$0.007} & 0.816\,{\scriptsize$\pm$0.003} & 0.901\,{\scriptsize$\pm$0.007} & 0.876\,{\scriptsize$\pm$0.012} & 0.853\,{\scriptsize$\pm$0.006} & 0.792\,{\scriptsize$\pm$0.028} \\
+  \midrule
+  Wang-Mendel (ours) & 0.888\,{\scriptsize$\pm$0.011} & 0.878\,{\scriptsize$\pm$0.020} & 0.889\,{\scriptsize$\pm$0.004} & 0.831\,{\scriptsize$\pm$0.004} & 0.932\,{\scriptsize$\pm$0.003} & 0.927\,{\scriptsize$\pm$0.004} & 0.912\,{\scriptsize$\pm$0.005} & 0.975\,{\scriptsize$\pm$0.003} \\
+  Additive fuzzy, no views (ours) & 0.914\,{\scriptsize$\pm$0.016} & 0.901\,{\scriptsize$\pm$0.048} & 0.896\,{\scriptsize$\pm$0.004} & 0.875\,{\scriptsize$\pm$0.002} & 0.919\,{\scriptsize$\pm$0.004} & 0.922\,{\scriptsize$\pm$0.004} & 0.925\,{\scriptsize$\pm$0.000} & 0.981\,{\scriptsize$\pm$0.000} \\
+  \textbf{Additive fuzzy (ours)} & \textbf{0.916}\,{\scriptsize$\pm$0.012} & \textbf{0.904}\,{\scriptsize$\pm$0.044} & \textbf{0.903}\,{\scriptsize$\pm$0.003} & \textbf{0.886}\,{\scriptsize$\pm$0.002} & \textbf{0.936}\,{\scriptsize$\pm$0.002} & \textbf{0.934}\,{\scriptsize$\pm$0.002} & \textbf{0.926}\,{\scriptsize$\pm$0.002} & 0.982\,{\scriptsize$\pm$0.000} \\
+  \bottomrule
 \end{tabular}}
 
 \vspace{2pt}
-\footnotesize $^\dagger$ Binary: logistic regression on $P$ and $P^2$; multiclass: identical to softmax.
+{\footnotesize $^\dagger$ Binary: logistic regression on $P$ and $P^2$; multiclass: identical to softmax.}
 \end{table*}
 
-\begin{table}[t]
+% ==================================================================
+% Tabela 3: Erros encontrados
+% ==================================================================
+\begin{table*}[t]
 \centering
 \caption{Network errors found when the 10\%, 20\% and 30\% most uncertain images are referred to an expert (per 1,000 images; MNIST per 10,000). In parentheses, the fraction of all network errors.}
 \label{tab:encontrados}
-\resizebox{\columnwidth}{!}{%
-\begin{tabular}{lccc}
-\toprule
-Method & Reviewing 10\% & Reviewing 20\% & Reviewing 30\% \\
-\midrule
-\multicolumn{4}{l}{\textit{HAM10000 (all)} --- 139 errors} \\
-Random & 14 (10\%) & 28 (20\%) & 42 (30\%) \\
-Softmax (MSP) & 49 (35\%) & 82 (59\%) & 111 (80\%) \\
-MC Dropout & 48 (34\%) & 82 (59\%) & 111 (80\%) \\
-TTA & 49 (35\%) & 87 (62\%) & 111 (80\%) \\
-Chen et al.~\cite{chen2019} & 61 (44\%) & 104 (75\%) & 122 (88\%) \\
-Gorbett and Blanchard~\cite{gorbett2022} & 54 (39\%) & 88 (64\%) & 110 (79\%) \\
-Output only & \textbf{65 (47\%)} & \textbf{107 (77\%)} & 125 (90\%) \\
-Additive fuzzy, no views (ours) & 63 (45\%) & 106 (76\%) & 125 (90\%) \\
-\textbf{Additive fuzzy (ours)} & 64 (46\%) & 106 (76\%) & \textbf{126 (91\%)} \\
-\midrule
-\multicolumn{4}{l}{\textit{HAM10000 (3000)} --- 169 errors} \\
-Random & 17 (10\%) & 34 (20\%) & 51 (30\%) \\
-Softmax (MSP) & 34 (20\%) & 82 (48\%) & 126 (74\%) \\
-MC Dropout & 34 (20\%) & 80 (48\%) & 126 (74\%) \\
-TTA & 37 (22\%) & 74 (44\%) & 113 (67\%) \\
-Chen et al.~\cite{chen2019} & 58 (34\%) & 109 (64\%) & 147 (87\%) \\
-Gorbett and Blanchard~\cite{gorbett2022} & 55 (33\%) & 101 (60\%) & 131 (77\%) \\
-Output only & 44 (26\%) & 109 (64\%) & \textbf{148 (87\%)} \\
-Additive fuzzy, no views (ours) & 57 (33\%) & \textbf{119 (70\%)} & \textbf{148 (88\%)} \\
-\textbf{Additive fuzzy (ours)} & \textbf{63 (37\%)} & 118 (70\%) & \textbf{148 (87\%)} \\
-\midrule
-\multicolumn{4}{l}{\textit{CIFAR-10 30\% noise} --- 135 errors} \\
-Random & 13 (10\%) & 27 (20\%) & 40 (30\%) \\
-Softmax (MSP) = Output only & 53 (40\%) & 84 (62\%) & 98 (73\%) \\
-MC Dropout & 49 (36\%) & 78 (58\%) & 94 (70\%) \\
-TTA & 38 (28\%) & 71 (53\%) & 96 (71\%) \\
-Chen et al.~\cite{chen2019} & 53 (39\%) & 88 (66\%) & 108 (80\%) \\
-Gorbett and Blanchard~\cite{gorbett2022} & 56 (41\%) & 93 (69\%) & 113 (84\%) \\
-Additive fuzzy, no views (ours) & \textbf{62 (46\%)} & 96 (72\%) & 116 (86\%) \\
-\textbf{Additive fuzzy (ours)} & \textbf{62 (46\%)} & \textbf{99 (74\%)} & \textbf{119 (88\%)} \\
-\midrule
-\multicolumn{4}{l}{\textit{CIFAR-100} --- 269 errors} \\
-Random & 27 (10\%) & 54 (20\%) & 81 (30\%) \\
-Softmax (MSP) = Output only & 74 (28\%) & 136 (50\%) & 187 (70\%) \\
-MC Dropout & 77 (29\%) & 138 (51\%) & 186 (69\%) \\
-TTA & 53 (20\%) & 114 (42\%) & 176 (65\%) \\
-Chen et al.~\cite{chen2019} & 76 (28\%) & 137 (51\%) & 187 (69\%) \\
-Gorbett and Blanchard~\cite{gorbett2022} & 74 (28\%) & 136 (50\%) & 184 (68\%) \\
-Additive fuzzy, no views (ours) & 78 (29\%) & 140 (52\%) & 189 (70\%) \\
-\textbf{Additive fuzzy (ours)} & \textbf{81 (30\%)} & \textbf{145 (54\%)} & \textbf{194 (72\%)} \\
-\midrule
-\multicolumn{4}{l}{\textit{CIFAR-10 (ResNet)} --- 71 errors} \\
-Random & 7 (10\%) & 14 (20\%) & 21 (30\%) \\
-Softmax (MSP) = Output only & 44 (62\%) & 61 (87\%) & 67 (95\%) \\
-MC Dropout & 44 (61\%) & 61 (87\%) & 67 (95\%) \\
-TTA & 45 (63\%) & \textbf{64 (90\%)} & \textbf{68 (96\%)} \\
-Chen et al.~\cite{chen2019} & 42 (60\%) & 60 (84\%) & 67 (94\%) \\
-Gorbett and Blanchard~\cite{gorbett2022} & 43 (61\%) & 60 (85\%) & 66 (93\%) \\
-Additive fuzzy, no views (ours) & 43 (61\%) & 59 (84\%) & 66 (93\%) \\
-\textbf{Additive fuzzy (ours)} & \textbf{48 (68\%)} & \textbf{64 (90\%)} & 67 (95\%) \\
-\midrule
-\multicolumn{4}{l}{\textit{CIFAR-10 (VGG)} --- 63 errors} \\
-Random & 6 (10\%) & 13 (20\%) & 19 (30\%) \\
-Softmax (MSP) = Output only & 41 (65\%) & 54 (87\%) & 58 (93\%) \\
-MC Dropout & 40 (64\%) & 54 (86\%) & 57 (92\%) \\
-TTA & 43 (69\%) & \textbf{57 (90\%)} & \textbf{60 (96\%)} \\
-Chen et al.~\cite{chen2019} & 37 (59\%) & 54 (86\%) & 59 (94\%) \\
-Gorbett and Blanchard~\cite{gorbett2022} & 39 (62\%) & 54 (86\%) & \textbf{60 (95\%)} \\
-Additive fuzzy, no views (ours) & 40 (65\%) & 54 (86\%) & 59 (94\%) \\
-\textbf{Additive fuzzy (ours)} & \textbf{44 (70\%)} & 56 (90\%) & 59 (95\%) \\
-\midrule
-\multicolumn{4}{l}{\textit{SVHN} --- 46 errors} \\
-Random & 5 (10\%) & 9 (20\%) & 14 (30\%) \\
-Softmax (MSP) = Output only & \textbf{35 (76\%)} & 41 (90\%) & \textbf{43 (94\%)} \\
-MC Dropout & 32 (69\%) & 41 (89\%) & \textbf{43 (93\%)} \\
-TTA & 30 (66\%) & 41 (89\%) & \textbf{43 (94\%)} \\
-Chen et al.~\cite{chen2019} & 34 (75\%) & 41 (89\%) & \textbf{43 (94\%)} \\
-Gorbett and Blanchard~\cite{gorbett2022} & \textbf{35 (76\%)} & 41 (88\%) & 42 (91\%) \\
-Additive fuzzy, no views (ours) & \textbf{35 (77\%)} & 41 (90\%) & \textbf{43 (94\%)} \\
-\textbf{Additive fuzzy (ours)} & \textbf{35 (76\%)} & \textbf{42 (90\%)} & \textbf{43 (94\%)} \\
-\midrule
-\multicolumn{4}{l}{\textit{MNIST} --- 93 errors} \\
-Random & 9 (10\%) & 19 (20\%) & 28 (30\%) \\
-Softmax (MSP) = Output only & 92 (99\%) & \textbf{93 (100\%)} & \textbf{93 (100\%)} \\
-MC Dropout & 92 (99\%) & \textbf{93 (100\%)} & \textbf{93 (100\%)} \\
-TTA & \textbf{93 (100\%)} & \textbf{93 (100\%)} & \textbf{93 (100\%)} \\
-Chen et al.~\cite{chen2019} & 91 (97\%) & \textbf{93 (100\%)} & \textbf{93 (100\%)} \\
-Gorbett and Blanchard~\cite{gorbett2022} & 79 (85\%) & 84 (90\%) & 87 (94\%) \\
-Additive fuzzy, no views (ours) & 92 (99\%) & \textbf{93 (100\%)} & \textbf{93 (100\%)} \\
-\textbf{Additive fuzzy (ours)} & \textbf{93 (100\%)} & \textbf{93 (100\%)} & \textbf{93 (100\%)} \\
-\bottomrule
-\end{tabular}}
-\end{table}
+\begin{minipage}[t]{0.495\textwidth}
+\centering
+\scriptsize\setlength{\tabcolsep}{3pt}
+\begin{tabular}[t]{lccc}
+  \toprule
+  Method & \begin{tabular}[c]{@{}c@{}}Reviewing\\10\%\end{tabular} & \begin{tabular}[c]{@{}c@{}}Reviewing\\20\%\end{tabular} & \begin{tabular}[c]{@{}c@{}}Reviewing\\30\%\end{tabular} \\
+  \midrule
+  \multicolumn{4}{@{}l}{\textit{HAM10000 (all)} --- 139 errors} \\
+  Random & 14 (10\%) & 28 (20\%) & 42 (30\%) \\
+  Softmax (MSP) & 49 (35\%) & 82 (59\%) & 111 (80\%) \\
+  MC Dropout & 48 (34\%) & 82 (59\%) & 111 (80\%) \\
+  TTA & 49 (35\%) & 87 (62\%) & 111 (80\%) \\
+  Chen et al.~\cite{chen2019} & 61 (44\%) & 104 (75\%) & 122 (88\%) \\
+  Gorbett and Blanchard~\cite{gorbett2022} & 54 (39\%) & 88 (64\%) & 110 (79\%) \\
+  Output only & \textbf{65 (47\%)} & \textbf{107 (77\%)} & 125 (90\%) \\
+  Additive fuzzy, no views (ours) & 63 (45\%) & 106 (76\%) & 125 (90\%) \\
+  \textbf{Additive fuzzy (ours)} & 64 (46\%) & 106 (76\%) & \textbf{126 (91\%)} \\
+  \midrule
+  \multicolumn{4}{@{}l}{\textit{HAM10000 (3000)} --- 169 errors} \\
+  Random & 17 (10\%) & 34 (20\%) & 51 (30\%) \\
+  Softmax (MSP) & 34 (20\%) & 82 (48\%) & 126 (74\%) \\
+  MC Dropout & 34 (20\%) & 80 (48\%) & 126 (74\%) \\
+  TTA & 37 (22\%) & 74 (44\%) & 113 (67\%) \\
+  Chen et al.~\cite{chen2019} & 58 (34\%) & 109 (64\%) & 147 (87\%) \\
+  Gorbett and Blanchard~\cite{gorbett2022} & 55 (33\%) & 101 (60\%) & 131 (77\%) \\
+  Output only & 44 (26\%) & 109 (64\%) & \textbf{148 (87\%)} \\
+  Additive fuzzy, no views (ours) & 57 (33\%) & \textbf{119 (70\%)} & \textbf{148 (88\%)} \\
+  \textbf{Additive fuzzy (ours)} & \textbf{63 (37\%)} & 118 (70\%) & \textbf{148 (87\%)} \\
+  \midrule
+  \multicolumn{4}{@{}l}{\textit{CIFAR-10 30\% noise} --- 135 errors} \\
+  Random & 13 (10\%) & 27 (20\%) & 40 (30\%) \\
+  Softmax (MSP) = Output only & 53 (40\%) & 84 (62\%) & 98 (73\%) \\
+  MC Dropout & 49 (36\%) & 78 (58\%) & 94 (70\%) \\
+  TTA & 38 (28\%) & 71 (53\%) & 96 (71\%) \\
+  Chen et al.~\cite{chen2019} & 53 (39\%) & 88 (66\%) & 108 (80\%) \\
+  Gorbett and Blanchard~\cite{gorbett2022} & 56 (41\%) & 93 (69\%) & 113 (84\%) \\
+  Additive fuzzy, no views (ours) & \textbf{62 (46\%)} & 96 (72\%) & 116 (86\%) \\
+  \textbf{Additive fuzzy (ours)} & \textbf{62 (46\%)} & \textbf{99 (74\%)} & \textbf{119 (88\%)} \\
+  \midrule
+  \multicolumn{4}{@{}l}{\textit{CIFAR-100} --- 269 errors} \\
+  Random & 27 (10\%) & 54 (20\%) & 81 (30\%) \\
+  Softmax (MSP) = Output only & 74 (28\%) & 136 (50\%) & 187 (70\%) \\
+  MC Dropout & 77 (29\%) & 138 (51\%) & 186 (69\%) \\
+  TTA & 53 (20\%) & 114 (42\%) & 176 (65\%) \\
+  Chen et al.~\cite{chen2019} & 76 (28\%) & 137 (51\%) & 187 (69\%) \\
+  Gorbett and Blanchard~\cite{gorbett2022} & 74 (28\%) & 136 (50\%) & 184 (68\%) \\
+  Additive fuzzy, no views (ours) & 78 (29\%) & 140 (52\%) & 189 (70\%) \\
+  \textbf{Additive fuzzy (ours)} & \textbf{81 (30\%)} & \textbf{145 (54\%)} & \textbf{194 (72\%)} \\
+  \bottomrule
+\end{tabular}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.495\textwidth}
+\centering
+\scriptsize\setlength{\tabcolsep}{3pt}
+\begin{tabular}[t]{lccc}
+  \toprule
+  Method & \begin{tabular}[c]{@{}c@{}}Reviewing\\10\%\end{tabular} & \begin{tabular}[c]{@{}c@{}}Reviewing\\20\%\end{tabular} & \begin{tabular}[c]{@{}c@{}}Reviewing\\30\%\end{tabular} \\
+  \midrule
+  \multicolumn{4}{@{}l}{\textit{CIFAR-10 (ResNet)} --- 71 errors} \\
+  Random & 7 (10\%) & 14 (20\%) & 21 (30\%) \\
+  Softmax (MSP) = Output only & 44 (62\%) & 61 (87\%) & 67 (95\%) \\
+  MC Dropout & 44 (61\%) & 61 (87\%) & 67 (95\%) \\
+  TTA & 45 (63\%) & \textbf{64 (90\%)} & \textbf{68 (96\%)} \\
+  Chen et al.~\cite{chen2019} & 42 (60\%) & 60 (84\%) & 67 (94\%) \\
+  Gorbett and Blanchard~\cite{gorbett2022} & 43 (61\%) & 60 (85\%) & 66 (93\%) \\
+  Additive fuzzy, no views (ours) & 43 (61\%) & 59 (84\%) & 66 (93\%) \\
+  \textbf{Additive fuzzy (ours)} & \textbf{48 (68\%)} & \textbf{64 (90\%)} & 67 (95\%) \\
+  \midrule
+  \multicolumn{4}{@{}l}{\textit{CIFAR-10 (VGG)} --- 63 errors} \\
+  Random & 6 (10\%) & 13 (20\%) & 19 (30\%) \\
+  Softmax (MSP) = Output only & 41 (65\%) & 54 (87\%) & 58 (93\%) \\
+  MC Dropout & 40 (64\%) & 54 (86\%) & 57 (92\%) \\
+  TTA & 43 (69\%) & \textbf{57 (90\%)} & \textbf{60 (96\%)} \\
+  Chen et al.~\cite{chen2019} & 37 (59\%) & 54 (86\%) & 59 (94\%) \\
+  Gorbett and Blanchard~\cite{gorbett2022} & 39 (62\%) & 54 (86\%) & \textbf{60 (95\%)} \\
+  Additive fuzzy, no views (ours) & 40 (65\%) & 54 (86\%) & 59 (94\%) \\
+  \textbf{Additive fuzzy (ours)} & \textbf{44 (70\%)} & 56 (90\%) & 59 (95\%) \\
+  \midrule
+  \multicolumn{4}{@{}l}{\textit{SVHN} --- 46 errors} \\
+  Random & 5 (10\%) & 9 (20\%) & 14 (30\%) \\
+  Softmax (MSP) = Output only & \textbf{35 (76\%)} & 41 (90\%) & \textbf{43 (94\%)} \\
+  MC Dropout & 32 (69\%) & 41 (89\%) & \textbf{43 (93\%)} \\
+  TTA & 30 (66\%) & 41 (89\%) & \textbf{43 (94\%)} \\
+  Chen et al.~\cite{chen2019} & 34 (75\%) & 41 (89\%) & \textbf{43 (94\%)} \\
+  Gorbett and Blanchard~\cite{gorbett2022} & \textbf{35 (76\%)} & 41 (88\%) & 42 (91\%) \\
+  Additive fuzzy, no views (ours) & \textbf{35 (77\%)} & 41 (90\%) & \textbf{43 (94\%)} \\
+  \textbf{Additive fuzzy (ours)} & \textbf{35 (76\%)} & \textbf{42 (90\%)} & \textbf{43 (94\%)} \\
+  \midrule
+  \multicolumn{4}{@{}l}{\textit{MNIST} --- 93 errors (per 10,000)} \\
+  Random & 9 (10\%) & 19 (20\%) & 28 (30\%) \\
+  Softmax (MSP) = Output only & 92 (99\%) & \textbf{93 (100\%)} & \textbf{93 (100\%)} \\
+  MC Dropout & 92 (99\%) & \textbf{93 (100\%)} & \textbf{93 (100\%)} \\
+  TTA & \textbf{93 (100\%)} & \textbf{93 (100\%)} & \textbf{93 (100\%)} \\
+  Chen et al.~\cite{chen2019} & 91 (97\%) & \textbf{93 (100\%)} & \textbf{93 (100\%)} \\
+  Gorbett and Blanchard~\cite{gorbett2022} & 79 (85\%) & 84 (90\%) & 87 (94\%) \\
+  Additive fuzzy, no views (ours) & 92 (99\%) & \textbf{93 (100\%)} & \textbf{93 (100\%)} \\
+  \textbf{Additive fuzzy (ours)} & \textbf{93 (100\%)} & \textbf{93 (100\%)} & \textbf{93 (100\%)} \\
+  \bottomrule
+\end{tabular}
+\end{minipage}
+\end{table*}
 
+% ==================================================================
+% Tabela 4: Ganho sobre o softmax
+% ==================================================================
 \begin{table}[t]
 \centering
 \caption{AUROC gain of the additive fuzzy model over softmax per scenario.}
 \label{tab:ganho}
 \resizebox{\columnwidth}{!}{%
 \begin{tabular}{lccccc}
-\toprule
-Scenario & Classes & Error rate & Softmax & Additive fuzzy & Gain \\
-\midrule
-MNIST & 10 & 0.9\% & 0.985 & 0.982 & -0.003 \\
-SVHN & 10 & 4.6\% & 0.926 & 0.926 & -0.001 \\
-CIFAR-10 (ResNet) & 10 & 7.1\% & 0.928 & 0.936 & +0.008 \\
-CIFAR-10 (VGG) & 10 & 6.3\% & 0.915 & 0.934 & +0.019 \\
-CIFAR-100 & 100 & 26.9\% & 0.866 & 0.886 & +0.020 \\
-HAM10000 (all) & 2 & 13.9\% & 0.865 & 0.916 & +0.052 \\
-HAM10000 (3000) & 2 & 16.9\% & 0.819 & 0.904 & +0.085 \\
-CIFAR-10 30\% noise & 10 & 13.5\% & 0.797 & 0.903 & +0.106 \\
-\bottomrule
+  \toprule
+  Scenario & Classes & \begin{tabular}[c]{@{}c@{}}Error\\rate\end{tabular} & Softmax & \begin{tabular}[c]{@{}c@{}}Additive\\fuzzy\end{tabular} & Gain \\
+  \midrule
+  MNIST & 10 & 0.9\% & 0.985 & 0.982 & $-$0.003 \\
+  SVHN & 10 & 4.6\% & 0.926 & 0.926 & $-$0.001 \\
+  CIFAR-10 (ResNet) & 10 & 7.1\% & 0.928 & 0.936 & +0.008 \\
+  CIFAR-10 (VGG) & 10 & 6.3\% & 0.915 & 0.934 & +0.019 \\
+  CIFAR-100 & 100 & 26.9\% & 0.866 & 0.886 & +0.020 \\
+  HAM10000 (all) & 2 & 13.9\% & 0.865 & 0.916 & +0.052 \\
+  HAM10000 (3000) & 2 & 16.9\% & 0.819 & 0.904 & +0.085 \\
+  CIFAR-10 30\% noise & 10 & 13.5\% & 0.797 & 0.903 & +0.106 \\
+  \bottomrule
 \end{tabular}}
 \end{table}
 
+% ==================================================================
+% Tabela 5: Significância
+% ==================================================================
 \begin{table}[t]
 \centering
 \caption{Runs (seeds) in which the additive fuzzy model is significantly better (95\% CI, paired bootstrap) than Chen et al. and the output-only baseline.}
 \label{tab:signif}
 \resizebox{\columnwidth}{!}{%
 \begin{tabular}{lcccc}
-\toprule
-Scenario & Beats Chen & Loses to Chen & Beats output only & Seeds \\
-\midrule
-HAM10000 (all) & 1 & 0 & 2 & 5 \\
-HAM10000 (3000) & 1 & 0 & 2 & 3 \\
-CIFAR-10 30\% noise & 3 & 0 & 3 & 3 \\
-CIFAR-100 & 3 & 0 & 3 & 3 \\
-CIFAR-10 (ResNet) & 3 & 0 & 3 & 3 \\
-CIFAR-10 (VGG) & 3 & 0 & 3 & 3 \\
-SVHN & 2 & 0 & 0 & 3 \\
-MNIST & 2 & 0 & 0 & 3 \\
-\midrule
-Total & 18 & 0 & 16 & 26 \\
-\bottomrule
+  \toprule
+  Scenario & \begin{tabular}[c]{@{}c@{}}Beats\\Chen\end{tabular} & \begin{tabular}[c]{@{}c@{}}Loses to\\Chen\end{tabular} & \begin{tabular}[c]{@{}c@{}}Beats output\\only\end{tabular} & Seeds \\
+  \midrule
+  HAM10000 (all) & 1 & 0 & 2 & 5 \\
+  HAM10000 (3000) & 1 & 0 & 2 & 3 \\
+  CIFAR-10 30\% noise & 3 & 0 & 3 & 3 \\
+  CIFAR-100 & 3 & 0 & 3 & 3 \\
+  CIFAR-10 (ResNet) & 3 & 0 & 3 & 3 \\
+  CIFAR-10 (VGG) & 3 & 0 & 3 & 3 \\
+  SVHN & 2 & 0 & 0 & 3 \\
+  MNIST & 2 & 0 & 0 & 3 \\
+  \midrule
+  \textbf{Total} & \textbf{18} & \textbf{0} & \textbf{16} & \textbf{26} \\
+  \bottomrule
 \end{tabular}}
 \end{table}
