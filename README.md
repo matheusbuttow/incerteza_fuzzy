@@ -149,3 +149,4 @@ Experimentos (cada um reproduz o cenário de um artigo):
 | `rodar.py` | executa tudo (retomável) |
 | `relatorio.py` | gera a planilha, os gráficos e o HTML |
 | `mostrar_casos.py` | mostra imagem por imagem: o que a rede disse, se errou, o risco do fuzzy aditivo e por quê (com as fotos) |
+| `mostrar_pertinencias.py` | desenha as funções de pertinência do fuzzy aditivo final, o peso de cada regra e os pontos de risco por valor (pertinencias.png) |
