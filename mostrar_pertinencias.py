@@ -10,6 +10,7 @@ Para cada feature escolhida, duas linhas:
 Exemplos:
   python mostrar_pertinencias.py                          # HAM completo, semente 42
   python mostrar_pertinencias.py --exp cifar10_ruido30 --semente 7
+  python mostrar_pertinencias.py --todos                  # todos os experimentos de uma vez (+ resumo_regras.csv)
 
 Saída: resultados/<exp>/semente_<s>/pertinencias.png
 """
@@ -36,13 +37,8 @@ def cor(w):
     return "#eb6834" if w > 0.05 else ("#2a78d6" if w < -0.05 else "#999999")
 
 
-if __name__ == "__main__":
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--exp", default="ham10000_todas")
-    ap.add_argument("--semente", type=int, default=42)
-    ap.add_argument("--saida", default=None, help="pasta de resultados (padrão: config.SAIDA)")
-    a = ap.parse_args()
-    pasta = Path(a.saida or C.SAIDA) / a.exp / f"semente_{a.semente}"
+def desenhar(exp, semente, saida=None):
+    pasta = Path(saida or C.SAIDA) / exp / f"semente_{semente}"
     tab = pd.read_csv(pasta / "features.csv.gz")
     info = json.loads((pasta / "info_rede.json").read_text())
     fixos = {"p": [0.0, info["limiar"], 1.0]} if info.get("limiar") is not None else None
@@ -94,11 +90,32 @@ if __name__ == "__main__":
         for ax in (a1, a2):
             ax.spines[["top", "right"]].set_visible(False)
 
-    fig.suptitle(f"Fuzzy aditivo — funções de pertinência e peso de cada regra  ({a.exp}, semente {a.semente})\n"
+    fig.suptitle(f"Fuzzy aditivo — funções de pertinência e peso de cada regra  ({exp}, semente {semente})\n"
                  f"risco de erro = sigmoide( base {b:+.2f} + soma dos pontos de risco das {len(feats)} features )",
                  fontsize=12)
     fig.tight_layout()
     fig.savefig(pasta / "pertinencias.png", dpi=150, bbox_inches="tight")
-    print("features:", ", ".join(feats))
-    print(ad.regras().to_string(index=False))
-    print(f"\nFigura: {pasta / 'pertinencias.png'}")
+    plt.close(fig)
+    r = ad.regras(); r.insert(0, "experimento", exp)
+    print(f"\n== {exp} | semente {semente} | features: {', '.join(feats)}")
+    print(r.drop(columns="experimento").to_string(index=False))
+    print(f"Figura: {pasta / 'pertinencias.png'}")
+    return r
+
+
+if __name__ == "__main__":
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--exp", default="ham10000_todas")
+    ap.add_argument("--semente", type=int, default=42)
+    ap.add_argument("--todos", action="store_true", help="roda para todos os experimentos que tiverem resultados")
+    ap.add_argument("--saida", default=None, help="pasta de resultados (padrão: config.SAIDA)")
+    a = ap.parse_args()
+    if not a.todos:
+        desenhar(a.exp, a.semente, a.saida)
+    else:
+        raiz = Path(a.saida or C.SAIDA); todas = []
+        for exp in C.EXPERIMENTOS:
+            if (raiz / exp / f"semente_{a.semente}" / "features.csv.gz").exists():
+                todas.append(desenhar(exp, a.semente, a.saida))
+        pd.concat(todas).to_csv(raiz / "resumo_regras.csv", index=False)
+        print(f"\nRegras de todos os experimentos: {raiz / 'resumo_regras.csv'}")
