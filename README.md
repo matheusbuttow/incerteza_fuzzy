@@ -99,7 +99,7 @@ Todos os métodos usam a **mesma rede congelada** e as **mesmas imagens de teste
 
 | Método | Referência | Aprende? |
 |---|---|---|
-| Só P (regressão logística com P e P²) | referência a superar | sim |
+| Só P (HAM: regressão logística com P e P²; várias classes: o próprio softmax) | referência a superar | sim (HAM) |
 | Softmax (MSP), entropia do softmax | Hendrycks & Gimpel 2017 | não |
 | Distância ao limiar (só HAM) | — | não |
 | TTA (vistas) | — | não |
@@ -112,6 +112,9 @@ Todos os métodos usam a **mesma rede congelada** e as **mesmas imagens de teste
 | ConfidNet | Corbière et al. 2019 | sim |
 | **NOSSO: Wang-Mendel** (P + 2 features internas) | proposto | sim |
 | **NOSSO: Fuzzy aditivo** (P + 3 features internas) | proposto | sim |
+| **NOSSO: Fuzzy aditivo (sem vistas)** — uma passagem pela rede | proposto | sim |
+
+Os nossos métodos também são comparados diretamente com Chen et al. 2019 (ganho de AUROC com IC 95%, bootstrap pareado).
 
 Métricas: AUROC, AUPR-erro, AUPR-acerto, FPR@95%TPR, AURC, E-AURC, acurácia ao encaminhar 0–50% das imagens mais incertas, ganho de AUROC sobre só P com IC 95% (bootstrap pareado), média ± desvio entre sementes.
 
@@ -120,6 +123,7 @@ Experimentos (cada um reproduz o cenário de um artigo):
 | Experimento | Cenário de | Rede |
 |---|---|---|
 | `ham10000` | seu trabalho (uma imagem por lesão, sem vazamento) | EfficientNet-B0 |
+| `ham10000_todas` | o mesmo com todas as ~7.400 lesões e 5 sementes | EfficientNet-B0 |
 | `cifar10`, `cifar10_ruido30` | Chen et al. 2019 | ResNet-32 |
 | `cifar10_vgg16`, `cifar100_vgg16` | ConfidNet 2019 / FD-Shifts 2023 | VGG-16 |
 | `svhn` | ConfidNet 2019 / FD-Shifts 2023 | CNN pequena |

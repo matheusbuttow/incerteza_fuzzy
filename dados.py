@@ -150,7 +150,7 @@ def _torchvision(nome, semente, ruido):
                     y_ref=y_tr[ref], y_teste=y_te, meta_teste=meta, vistas=VISTAS[nome])
 
 
-def _ham(semente):
+def _ham(semente, n_lesoes):
     from sklearn.model_selection import train_test_split
     meta = pd.read_csv(C.HAM_DIR / "HAM10000_metadata.csv")
     meta["is_malignant"] = meta.dx.isin({"mel", "bcc", "akiec"}).astype(int)
@@ -159,7 +159,7 @@ def _ham(semente):
     meta = meta.dropna(subset=["image_path"])
 
     uma = meta.sample(frac=1, random_state=semente).drop_duplicates("lesion_id").reset_index(drop=True)
-    n = min(C.HAM_N_LESOES or len(uma), len(uma))
+    n = min(n_lesoes or len(uma), len(uma))
     base = uma if n == len(uma) else train_test_split(uma, train_size=n, stratify=uma.is_malignant, random_state=semente)[0]
     tr, resto = train_test_split(base, test_size=C.HAM_FRAC_VAL + C.HAM_FRAC_TESTE, stratify=base.is_malignant, random_state=semente)
     va, te = train_test_split(resto, test_size=C.HAM_FRAC_TESTE / (C.HAM_FRAC_VAL + C.HAM_FRAC_TESTE),
@@ -189,7 +189,7 @@ def _ham(semente):
 
 def carregar(exp, semente):
     e = C.EXPERIMENTOS[exp]
-    return _ham(semente) if e["dados"] == "ham10000" else _torchvision(e["dados"], semente, e["ruido"])
+    return _ham(semente, e.get("n_lesoes", C.HAM_N_LESOES)) if e["dados"] == "ham10000" else _torchvision(e["dados"], semente, e["ruido"])
 
 
 def carregador(ds, lote, embaralhar=False):

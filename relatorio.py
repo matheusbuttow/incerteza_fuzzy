@@ -23,10 +23,11 @@ import config as C
 
 warnings.filterwarnings("ignore")
 plt.rcParams.update({"figure.dpi": 130, "axes.spines.top": False, "axes.spines.right": False, "font.size": 10})
-NOSSO = {"NOSSO: Wang-Mendel": "#2a78d6", "NOSSO: Fuzzy aditivo": "#eb6834"}
+NOSSO = {"NOSSO: Wang-Mendel": "#2a78d6", "NOSSO: Fuzzy aditivo": "#eb6834", "NOSSO: Fuzzy aditivo (sem vistas)": "#e87ba4"}
 CHAVE = {"Só P": ("#7a7a7a", "--"), "Softmax (MSP)": ("#6250d6", ":"), "MC Dropout (desvio)": ("#e87ba4", "-"),
          "Chen et al. 2019": ("#1baf7a", "-"), "ConfidNet": ("#eda100", "-"),
-         "NOSSO: Wang-Mendel": ("#2a78d6", "-"), "NOSSO: Fuzzy aditivo": ("#eb6834", "-")}
+         "NOSSO: Wang-Mendel": ("#2a78d6", "-"), "NOSSO: Fuzzy aditivo": ("#eb6834", "-"),
+         "NOSSO: Fuzzy aditivo (sem vistas)": ("#e87ba4", "--")}
 METRICAS = ["AUROC", "AUPR-erro", "FPR@95%TPR", "E-AURC (x1000)", "acurácia encaminhando 10%", "acurácia encaminhando 20%",
             "acurácia encaminhando 30%"]
 
@@ -69,6 +70,10 @@ def agregar(met):
     ag["sementes"] = g.size()
     ag["sementes com ganho significativo sobre só P"] = g["IC95 ganho inf"].apply(lambda s: int((s > 0).sum()))
     ag["ganho AUROC sobre só P (média)"] = g["ganho AUROC sobre só P"].mean()
+    if "IC95 Chen inf" in met:
+        ag["ganho AUROC sobre Chen (média)"] = g["ganho AUROC sobre Chen"].mean()
+        ag["sementes com ganho significativo sobre Chen"] = g["IC95 Chen inf"].apply(lambda s: int((s > 0).sum()))
+        ag["sementes com perda significativa para Chen"] = g["IC95 Chen sup"].apply(lambda s: int((s < 0).sum()))
     return ag.reset_index()
 
 
@@ -301,7 +306,9 @@ if __name__ == "__main__":
     pub = publicados(ag)
     nossos = ag[ag["método"].str.startswith("NOSSO") | (ag["método"] == "Só P")][
         ["experimento", "método", "AUROC (média)", "AUROC (desvio)", "E-AURC (x1000) (média)", "acurácia encaminhando 20% (média)",
-         "ganho AUROC sobre só P (média)", "sementes com ganho significativo sobre só P", "sementes"]]
+         "ganho AUROC sobre só P (média)", "sementes com ganho significativo sobre só P"]
+        + [c for c in ("ganho AUROC sobre Chen (média)", "sementes com ganho significativo sobre Chen",
+                       "sementes com perda significativa para Chen") if c in ag] + ["sementes"]]
     redes = R["redes"]
     with pd.ExcelWriter(saida / "relatorio.xlsx") as xw:
         geral.to_excel(xw, sheet_name="visao_geral_AUROC", index=False)

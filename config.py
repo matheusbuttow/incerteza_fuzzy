@@ -3,7 +3,8 @@ config.py — tudo que você pode querer mudar está aqui.
 
 Cada EXPERIMENTO reproduz o cenário de um artigo, para aplicarmos os métodos deles nos nossos dados
 e o nosso método nos cenários deles:
-  ham10000          o seu trabalho (EfficientNet-B0, benigno × maligno, uma imagem por lesão)
+  ham10000          o seu trabalho (EfficientNet-B0, benigno × maligno, uma imagem por lesão, 3000 lesões)
+  ham10000_todas    o mesmo com TODAS as ~7.400 lesões (teste ~1.480 imagens) e 5 sementes
   cifar10           Chen et al. 2019 (ResNet-32, CIFAR-10 limpo)
   cifar10_ruido30   Chen et al. 2019 (ResNet-32, 30% dos rótulos de treino trocados)
   cifar10_vgg16     ConfidNet 2019 / FD-Shifts 2023 (VGG-16, CIFAR-10)
@@ -22,10 +23,12 @@ SAIDA = Path("resultados")
 
 # ----------------------------------------------------------------------------- o que rodar
 SEMENTES = [42, 7, 2026]                               # cada semente: novo sorteio dos dados + novo treino da rede
-EXPERIMENTOS_PADRAO = ["ham10000", "cifar10", "cifar10_ruido30", "cifar10_vgg16", "cifar100_vgg16", "svhn", "mnist"]
+EXPERIMENTOS_PADRAO = ["ham10000", "ham10000_todas", "cifar10", "cifar10_ruido30", "cifar10_vgg16", "cifar100_vgg16", "svhn", "mnist"]
 
 EXPERIMENTOS = {
     "ham10000":        dict(dados="ham10000", arq="effnet_b0", ruido=0.0, artigo="Seu trabalho (BRACIS 2025)"),
+    "ham10000_todas":  dict(dados="ham10000", arq="effnet_b0", ruido=0.0, artigo="Seu trabalho (BRACIS 2025)",
+                            n_lesoes=None, sementes=[42, 7, 2026, 1, 123]),   # todas as lesões, 5 sementes
     "cifar10":         dict(dados="cifar10",  arq="resnet32",  ruido=0.0, artigo="Chen et al. 2019"),
     "cifar10_ruido30": dict(dados="cifar10",  arq="resnet32",  ruido=0.3, artigo="Chen et al. 2019"),
     "cifar10_vgg16":   dict(dados="cifar10",  arq="vgg16",     ruido=0.0, artigo="ConfidNet 2019 / FD-Shifts 2023"),

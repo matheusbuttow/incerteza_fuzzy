@@ -11,13 +11,17 @@ Sem treino (um número pronto):
   Mahalanobis              Lee et al. 2018
   Deep kNN                 Papernot & McDaniel 2018 (vizinhos que discordam)
 Treinados em validação cruzada (mesmos folds para todos):
-  Só P                     regressão logística com P e P² — a melhor forma de usar só a saída da rede
+  Só P                     binário (HAM): regressão logística com P e P² (aprende onde P erra perto do limiar);
+                           várias classes: o próprio softmax (MSP), que já é a melhor forma de usar só a saída
   Chen et al. 2019         probes em cada camada + GBM
   Font et al. 2025         vizinhos em cada camada + regressão logística
   Gorbett & Blanchard 2022 SVM linear na penúltima camada
   ConfidNet (Corbière 2019) rede pequena que prevê a confiança na classe verdadeira
   NOSSO: Wang-Mendel       regras fuzzy (P + 2 features internas)
   NOSSO: Fuzzy aditivo     regras fuzzy de 1 condição com pesos (P + 3 features internas)
+  NOSSO: Fuzzy aditivo (sem vistas)  o mesmo, proibido de usar as vistas: UMA passagem pela rede.
+                           Mostra quanto do ganho vem da leitura interna e quanto das vistas (TTA).
+Os nossos métodos também são comparados diretamente com Chen et al. 2019 (IC 95% pareado).
 Todos os escores: MAIOR = MAIS INCERTO (mais chance de a rede errar).
 """
 import warnings
@@ -42,12 +46,14 @@ warnings.filterwarnings("ignore")
 SEM_TREINO = {"Softmax (MSP)": "msp", "Entropia do softmax": "entropia_softmax", "Distância ao limiar": "prox_p",
               "TTA (vistas)": "p_vistas_std", "MC Dropout (desvio)": "mc_dropout_std", "MC Dropout (entropia)": "mc_entropia",
               "Mahalanobis": "mahalanobis", "Deep kNN": "vizinhos_discordam"}
-NOSSOS = ["NOSSO: Wang-Mendel", "NOSSO: Fuzzy aditivo"]
+NOSSOS = ["NOSSO: Wang-Mendel", "NOSSO: Fuzzy aditivo", "NOSSO: Fuzzy aditivo (sem vistas)"]
+VISTAS = ["vistas_mudam", "p_vistas_std", "trajetoria_vistas"]     # exigem passar a imagem várias vezes pela rede
 REFERENCIA = {"Softmax (MSP)": "Hendrycks & Gimpel 2017", "Entropia do softmax": "—", "Distância ao limiar": "—",
               "TTA (vistas)": "—", "MC Dropout (desvio)": "Gal & Ghahramani 2016", "MC Dropout (entropia)": "Gal & Ghahramani 2016",
               "Mahalanobis": "Lee et al. 2018", "Deep kNN": "Papernot & McDaniel 2018", "Só P": "referência a superar",
               "Chen et al. 2019": "AISTATS 2019", "Font et al. 2025": "arXiv 2025", "Gorbett & Blanchard 2022": "WACV-W 2022",
-              "ConfidNet": "Corbière et al., NeurIPS 2019", "NOSSO: Wang-Mendel": "proposto", "NOSSO: Fuzzy aditivo": "proposto"}
+              "ConfidNet": "Corbière et al., NeurIPS 2019", "NOSSO: Wang-Mendel": "proposto", "NOSSO: Fuzzy aditivo": "proposto",
+              "NOSSO: Fuzzy aditivo (sem vistas)": "proposto, uma passagem"}
 
 
 def _p2(tab):
@@ -60,7 +66,9 @@ def avaliar(tab, extras, binario, limiar, y_teste, semente):
     y = tab.erro.values
     fixos = {"p": [0.0, limiar, 1.0]} if binario and limiar is not None else None
     oof = {m: tab[c].values.astype(float) for m, c in SEM_TREINO.items() if not (m == "Distância ao limiar" and not binario)}
-    treinados = ["Só P", "Chen et al. 2019", "Font et al. 2025", "Gorbett & Blanchard 2022", "ConfidNet"] + NOSSOS
+    treinados = (["Só P"] if binario else []) + ["Chen et al. 2019", "Font et al. 2025", "Gorbett & Blanchard 2022", "ConfidNet"] + NOSSOS
+    if not binario:
+        oof["Só P"] = tab["msp"].values.astype(float)                       # várias classes: o próprio softmax
     for m in treinados:
         oof[m] = np.zeros(len(y))
     probs, pen = extras["probs"], extras["penultima"]
@@ -69,11 +77,12 @@ def avaliar(tab, extras, binario, limiar, y_teste, semente):
          "Font et al. 2025": np.c_[_p2(tab), tab[["font_dc", "font_lu"]].values],
          "Gorbett & Blanchard 2022": np.c_[pen, top, _p2(tab)]}
     tcp = probs[np.arange(len(y)), y_teste]                                   # confiança na classe verdadeira (ConfidNet)
-    escolhas = {"NOSSO: Wang-Mendel": [], "NOSSO: Fuzzy aditivo": []}
+    escolhas = {m: [] for m in NOSSOS}
     cand = [c for c in NOSSAS if c in tab]
+    cand_sem_vistas = [c for c in cand if c not in VISTAS]
     for tr, te in StratifiedKFold(C.N_FOLDS, shuffle=True, random_state=semente).split(tab, y):
         lr = lambda: make_pipeline(StandardScaler(), LogisticRegression(max_iter=3000))
-        for m, mod in [("Só P", lr()), ("Font et al. 2025", lr()),
+        for m, mod in ([("Só P", lr())] if binario else []) + [("Font et al. 2025", lr()),
                        ("Chen et al. 2019", HistGradientBoostingClassifier(max_iter=200, learning_rate=0.05, random_state=semente)),
                        ("Gorbett & Blanchard 2022", make_pipeline(StandardScaler(), LinearSVC(C=0.01, class_weight="balanced", max_iter=20000)))]:
             mod.fit(X[m][tr], y[tr])
@@ -81,8 +90,10 @@ def avaliar(tab, extras, binario, limiar, y_teste, semente):
         cn = make_pipeline(StandardScaler(), MLPRegressor(hidden_layer_sizes=(256, 128), early_stopping=True, max_iter=300, random_state=semente))
         oof["ConfidNet"][te] = -cn.fit(pen[tr], tcp[tr]).predict(pen[te])
         d = tab.iloc[tr]
-        for m, k, Mod in [("NOSSO: Wang-Mendel", C.FEATURES_WM, fz.WangMendel), ("NOSSO: Fuzzy aditivo", C.FEATURES_ADITIVO, fz.FuzzyAditivo)]:
-            feats = fz.selecionar(d, cand, k); escolhas[m].append(feats)
+        for m, k, Mod, cs in [("NOSSO: Wang-Mendel", C.FEATURES_WM, fz.WangMendel, cand),
+                              ("NOSSO: Fuzzy aditivo", C.FEATURES_ADITIVO, fz.FuzzyAditivo, cand),
+                              ("NOSSO: Fuzzy aditivo (sem vistas)", C.FEATURES_ADITIVO, fz.FuzzyAditivo, cand_sem_vistas)]:
+            feats = fz.selecionar(d, cs, k); escolhas[m].append(feats)
             oof[m][te] = Mod(fixos).fit(d[feats].values, y[tr], feats).predict_proba(tab.iloc[te][feats].values)[:, 1]
     return oof, escolhas, fixos
 
@@ -108,17 +119,21 @@ def metricas(y, s):
     return out
 
 
-def tabela(y, oof, base="Só P", semente=0):
-    """Métricas + ganho de AUROC sobre só P com IC 95% (bootstrap pareado)."""
+def tabela(y, oof, base="Só P", rival="Chen et al. 2019", semente=0):
+    """Métricas + ganho de AUROC sobre só P e sobre Chen et al. 2019, com IC 95% (bootstrap pareado:
+    as MESMAS reamostragens para todos os métodos)."""
     r = np.random.default_rng(semente)
     boot = [i for i in (r.integers(0, len(y), len(y)) for _ in range(C.N_BOOT)) if y[i].min() != y[i].max()]
-    base_b = np.array([roc_auc_score(y[i], oof[base][i]) for i in boot]); lin = []
+    auc_b = {m: np.array([roc_auc_score(y[i], np.asarray(s, float)[i]) for i in boot]) for m, s in oof.items()}
+    lin = []
     for m, s in oof.items():
-        s = np.asarray(s, float); d = np.array([roc_auc_score(y[i], s[i]) for i in boot]) - base_b
-        mt = metricas(y, s)
+        s = np.asarray(s, float); mt = metricas(y, s)
+        d, dc = auc_b[m] - auc_b[base], auc_b[m] - auc_b[rival]
         lin.append({"método": m, "referência": REFERENCIA.get(m, ""), **mt,
                     "ganho AUROC sobre só P": mt["AUROC"] - roc_auc_score(y, oof[base]),
-                    "IC95 ganho inf": np.percentile(d, 2.5), "IC95 ganho sup": np.percentile(d, 97.5)})
+                    "IC95 ganho inf": np.percentile(d, 2.5), "IC95 ganho sup": np.percentile(d, 97.5),
+                    "ganho AUROC sobre Chen": mt["AUROC"] - roc_auc_score(y, oof[rival]),
+                    "IC95 Chen inf": np.percentile(dc, 2.5), "IC95 Chen sup": np.percentile(dc, 97.5)})
     return pd.DataFrame(lin)
 
 

@@ -173,6 +173,6 @@ if __name__ == "__main__":
     if disp == "cuda":
         torch.backends.cudnn.benchmark = True
     for exp in a.exp or C.EXPERIMENTOS_PADRAO:
-        for s in a.sementes or C.SEMENTES:
+        for s in a.sementes or C.EXPERIMENTOS[exp].get("sementes", C.SEMENTES):
             rodar_um(exp, s, disp, a.refazer)
     print("\nTudo pronto. Agora rode:  python relatorio.py")
