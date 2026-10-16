@@ -150,3 +150,4 @@ Experimentos (cada um reproduz o cenário de um artigo):
 | `relatorio.py` | gera a planilha, os gráficos e o HTML |
 | `mostrar_casos.py` | mostra imagem por imagem: o que a rede disse, se errou, o risco do fuzzy aditivo e por quê (com as fotos) |
 | `mostrar_pertinencias.py` | (`--todos` para todos os experimentos) desenha as funções de pertinência do fuzzy aditivo final, o peso de cada regra e os pontos de risco por valor (pertinencias.png) |
+| `tabelas_latex.py` | gera as tabelas do artigo em LaTeX para o Overleaf (tabelas_pt.tex e tabelas_en.tex) a partir do relatorio.xlsx |
