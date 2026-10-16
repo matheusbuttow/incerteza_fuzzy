@@ -148,3 +148,4 @@ Experimentos (cada um reproduz o cenário de um artigo):
 | `extras.py` | as três validações com incerteza real |
 | `rodar.py` | executa tudo (retomável) |
 | `relatorio.py` | gera a planilha, os gráficos e o HTML |
+| `mostrar_casos.py` | mostra imagem por imagem: o que a rede disse, se errou, o risco do fuzzy aditivo e por quê (com as fotos) |
