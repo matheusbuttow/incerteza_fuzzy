@@ -172,10 +172,11 @@ def aumentar_por_imagem(x):
 
 def treinar_chen(model, X, y, Xval, yval, device, passos=90_000, bs=128, log=print):
     """Receita do exemplo do TensorFlow: SGD com momento 0,9, lote 128, decaimento de peso 2e-4,
-    taxa 0,1 → 0,01 (40k passos) → 0,001 (60k) → 0,0001 (80k)."""
+    taxa 0,1 → 0,01 (40k passos) → 0,001 (60k) → 0,0001 (80k), em 90k passos.
+    Com outro nº de passos, as quedas da taxa ficam nas mesmas frações (4/9, 6/9, 8/9 do treino)."""
     model.to(device)
     opt = torch.optim.SGD(model.parameters(), 0.1, momentum=0.9, weight_decay=2e-4)
-    sch = torch.optim.lr_scheduler.MultiStepLR(opt, [40_000, 60_000, 80_000], 0.1)
+    sch = torch.optim.lr_scheduler.MultiStepLR(opt, [round(passos * f) for f in (4 / 9, 6 / 9, 8 / 9)], 0.1)
     Xt, yt = tensor(X), torch.from_numpy(y).long()
     scaler = torch.amp.GradScaler(enabled=device == "cuda")
     passo, t0 = 0, time.time()
@@ -187,6 +188,9 @@ def treinar_chen(model, X, y, Xval, yval, device, passos=90_000, bs=128, log=pri
                 loss = Fn.cross_entropy(model(xb), yb)
             opt.zero_grad(set_to_none=True); scaler.scale(loss).backward(); scaler.step(opt); scaler.update(); sch.step()
             passo += 1
+            if passo == 1_000 and passos > 1_000:
+                log(f"  passo 1000: {(time.time() - t0) / 60:.1f} min → previsão para {passos} passos: "
+                    f"{(time.time() - t0) / 60 * passos / 1000:.0f} min"); model.train()
             if passo % 10_000 == 0 or passo == passos:
                 log(f"  passo {passo}/{passos}  perda {loss.item():.3f}  acurácia DEV {acuracia(model, Xval, yval, device):.3f}"
                     f"  ({(time.time() - t0) / 60:.0f} min)"); model.train()

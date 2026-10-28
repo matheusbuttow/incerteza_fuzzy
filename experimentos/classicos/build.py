@@ -25,7 +25,7 @@ code("""
 DATASETS = ['cifar10', 'cifar100', 'tinyimagenet']
 CENARIOS = [('limpo', 0.0), ('ruidoso', 0.3)]
 MODELO   = 'chen'    # 'chen' = arquitetura e receita do exemplo do TensorFlow usado por Chen | 'nosso' = versão anterior
-PASSOS   = 90_000    # receita de Chen: taxa 0,1 → 0,01 (40k) → 0,001 (60k) → 0,0001 (80k)
+PASSOS   = 90_000    # receita de Chen: taxa 0,1 → 0,01 (40k) → 0,001 (60k) → 0,0001 (80k); se reduzir, as quedas acompanham
 EPOCAS   = 60        # só para MODELO = 'nosso'
 K_FUZZY  = 4         # features dos sistemas fuzzy (escolhidas no TRAIN-META)
 COM_OOD  = True      # TEST + OOD: CIFAR-10 ↔ CIFAR-100 (Tiny-ImageNet: sem OOD)
