@@ -151,3 +151,13 @@ Experimentos (cada um reproduz o cenário de um artigo):
 | `mostrar_casos.py` | mostra imagem por imagem: o que a rede disse, se errou, o risco do fuzzy aditivo e por quê (com as fotos) |
 | `mostrar_pertinencias.py` | (`--todos` para todos os experimentos) desenha as funções de pertinência do fuzzy aditivo final, o peso de cada regra e os pontos de risco por valor (pertinencias.png) |
 | `tabelas_latex.py` | gera as tabelas do artigo em LaTeX para o Overleaf (tabelas_pt.tex e tabelas_en.tex) a partir do relatorio.xlsx |
+
+## 6. Experimentos extras (`experimentos/`)
+
+Pasta separada, com notebook Jupyter **e** script Python para cada experimento:
+
+- `experimentos/classicos/`: protocolo de Chen et al. (2019) em CIFAR-10, CIFAR-100 e Tiny-ImageNet, com a ResNet-32 e a receita do exemplo do TensorFlow usado por Chen.
+- `experimentos/ham_enxuto/`: a versão enxuta da rodada 5 no HAM10000 (EfficientNet do BRACIS).
+- `experimentos/ham_tipo2/`: três arquiteturas no HAM10000 (EfficientNet-B0, ResNet-50, ViT-B/16) e fuzzy aditivo tipo 1 × tipo 2, deixando uma arquitetura de fora.
+
+Cada escolha desses experimentos (e o que é igual ou diferente de Chen) está na tabela [`experimentos/PROTOCOLO.md`](experimentos/PROTOCOLO.md). Veja também [`experimentos/LEIAME.md`](experimentos/LEIAME.md).

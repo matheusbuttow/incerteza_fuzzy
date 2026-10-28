@@ -7,3 +7,8 @@ dados_falsos/
 __pycache__/
 *.pyc
 .ipynb_checkpoints/
+
+# experimentos/ (gerados ao rodar)
+experimentos/**/teste_falso/
+experimentos/**/saida_tipo2/
+experimentos/**/*.xlsx
