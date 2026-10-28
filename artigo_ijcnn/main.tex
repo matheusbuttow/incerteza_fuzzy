@@ -5,6 +5,7 @@
 %   - 6 a 8 páginas COM referências; até 2 extras pagas
 %   - revisão duplo-cego: sem nomes, sem agradecimentos, citar trabalho próprio em 3ª pessoa
 %   - A4, duas colunas, Times 10 pt, sem número de página
+% Números: historico/teste1_2026-10-16 (relatorio.xlsx, RESULTADOS.md), commit f56b043.
 % =====================================================================
 \documentclass[conference,a4paper]{IEEEtran}
 \IEEEoverridecommandlockouts
@@ -18,6 +19,7 @@
 \usepackage[hidelinks]{hyperref}
 
 \newcommand{\todo}[1]{\textcolor{red}{[TODO: #1]}}
+\newcommand{\term}[1]{\textsc{#1}}
 
 \begin{document}
 
@@ -36,16 +38,19 @@ for Detecting Misclassifications of Deep Classifiers}
 \maketitle
 
 \begin{abstract}
-Deep classifiers often fail with high confidence, which is critical in medical applications such as skin-cancer screening.
-We propose an interpretable uncertainty detector that reads the network's internal behavior---linear probes at each block,
-agreement across augmented views, and disagreement among nearest neighbors in feature space---and combines these signals
-with an additive fuzzy model: a zero-order Takagi--Sugeno system with single-antecedent rules and logistic output.
-Each rule has a readable form (``IF final-layer agreement is LOW THEN risk of error increases'') and a learned weight.
-On HAM10000 (benign vs.\ malignant, EfficientNet-B0) and seven additional scenarios (CIFAR-10 with and without label noise,
-CIFAR-100, SVHN, MNIST), the method matches or exceeds the best baseline in all scenarios
-(AUROC 0.916 on HAM10000 and 0.903 on CIFAR-10 with 30\% label noise), is significantly better than Chen et al.\ in
-18 of 26 runs and never significantly worse, and explains each decision through its rules.
-\todo{ajustar números finais}
+Deep classifiers often fail with high confidence, which is critical in medical applications such as skin-cancer screening,
+where an undetected error delays a diagnosis.
+We propose an interpretable detector of misclassifications that reads the internal behavior of a trained, frozen network:
+linear probes at every block reveal whether the network changed its mind on the way to the answer,
+augmented views reveal whether the answer is stable, and nearest neighbors in feature space reveal whether the input is familiar.
+These signals are combined by an additive fuzzy model, a zero-order Takagi--Sugeno system with single-antecedent rules and logistic output,
+so that every rule has a readable form (``IF final-block agreement is \term{low} THEN the risk of error increases'') and a learned weight.
+On HAM10000 (benign vs.\ malignant, EfficientNet-B0) and six additional scenarios (CIFAR-10 with and without 30\% label noise,
+CIFAR-100, SVHN and MNIST), all evaluated on the same frozen networks and test images as twelve competing detectors,
+the method obtains the best or tied-best mean AUROC in seven of eight settings and stays within 0.004 of the best in the remaining one
+(AUROC 0.916 on HAM10000 and 0.903 on CIFAR-10 with label noise, against 0.865 and 0.797 for the softmax confidence).
+Against the probe-based meta-model of Chen et al., it is significantly better in 18 of 26 runs and never significantly worse,
+while its rules remain stable across resamplings.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -54,71 +59,217 @@ uncertainty estimation, misclassification detection, fuzzy systems, interpretabi
 
 % =====================================================================
 \section{Introduction}
-\todo{Problema: rede erra com confiança; custo do erro em dermatologia; encaminhar casos incertos ao especialista.}
 
-\todo{Lacuna: métodos de incerteza usam só a saída (softmax, MC Dropout, TTA) ou são caixas-pretas (Chen et al.~\cite{chen2019}, ConfidNet~\cite{corbiere2019}).}
+Deep networks for dermoscopy already reach expert-level accuracy on curated benchmarks, yet they still make mistakes, and some of these
+mistakes come with high confidence. In a screening workflow, the cost is asymmetric: a malignant lesion classified as benign with a
+confident score is unlikely to be reviewed. A practical way to deploy such a model is \emph{selective prediction}: the network answers
+the cases it is likely to get right and refers the rest to a dermatologist. This requires a score that ranks images by their risk of
+being misclassified, a task known as misclassification (or failure) detection~\cite{hendrycks2017,jaeger2023}.
 
-Contributions:
+The simplest score is the network's own confidence, the maximum softmax probability~\cite{hendrycks2017}. It is a strong baseline,
+but it is poorly calibrated~\cite{guo2017} and, by construction, it sees only the last layer. Bayesian approximations such as
+MC Dropout~\cite{gal2016} and test-time augmentation still summarize the output, and distance-based scores such as
+Mahalanobis~\cite{lee2018} and Deep $k$NN~\cite{papernot2018} target out-of-distribution inputs rather than in-distribution errors.
+Meta-models that read the internal representations, such as the linear-probe approach of Chen et al.~\cite{chen2019},
+layer-wise neighbors~\cite{font2025} or classifiers on penultimate features~\cite{gorbett2022}, are more informative,
+but they are black boxes themselves: they say \emph{that} an image is risky, not \emph{why}.
+
+We argue that the reasons a network fails are visible in how it reaches its answer, and that they can be stated as rules.
+A correct, confident prediction is usually formed early and kept until the end; a wrong one tends to hesitate across blocks,
+to change when the image is mirrored, or to sit among training neighbors that received a different answer.
+We measure these behaviors with a small set of features and combine them with an additive fuzzy model whose rules a clinician can read.
+
+Our contributions are:
 \begin{itemize}
-  \item an internal reading of the network (probes, views, neighbors) summarized in a few interpretable features;
-  \item an additive fuzzy detector whose rules are stable across resamplings (weight correlation 0.91--0.99);
-  \item a comparison against classical and recent detectors on eight scenarios, with paired bootstrap tests.
+  \item a reading of a frozen network, without retraining, along four complementary axes (the answer, the path through the blocks,
+        the stability across views and the familiarity of the input), summarized in a few interpretable features;
+  \item an additive fuzzy detector, a zero-order Takagi--Sugeno system with single-antecedent rules and logistic output, whose rule
+        weights are stable across resamplings (Spearman correlation 0.91--0.94 on HAM10000);
+  \item a controlled comparison with twelve detectors on eight scenarios, using the same frozen networks, the same test images and the
+        same cross-validation folds, with paired bootstrap tests, plus three checks against real-world uncertainty
+        (biopsy-confirmed lesions, multiple photographs of the same lesion and human disagreement on CIFAR-10H~\cite{peterson2019}).
 \end{itemize}
 
 % =====================================================================
 \section{Related Work}
-\subsection{Uncertainty and misclassification detection}
-Softmax confidence~\cite{hendrycks2017}, MC Dropout~\cite{gal2016}, Mahalanobis~\cite{lee2018}, Deep kNN~\cite{papernot2018},
-ConfidNet~\cite{corbiere2019}. \todo{completar}
+
+\subsection{Misclassification and failure detection}
+The maximum softmax probability (MSP)~\cite{hendrycks2017} remains the reference baseline, and a large benchmark showed that most
+dedicated methods fail to beat it consistently on in-distribution errors~\cite{jaeger2023}. MC Dropout~\cite{gal2016} and deep
+ensembles~\cite{lakshminarayanan2017} estimate epistemic uncertainty at a higher inference cost. ConfidNet~\cite{corbiere2019}
+learns to regress the true-class probability from penultimate features. Distance-based scores, Mahalanobis~\cite{lee2018} and Deep
+$k$NN~\cite{papernot2018}, measure familiarity in feature space and are mostly designed for out-of-distribution detection.
 
 \subsection{Meta-models on internal representations}
-Chen et al.~\cite{chen2019}, Font et al.~\cite{font2025}, Gorbett and Blanchard~\cite{gorbett2022}. \todo{completar}
+Linear probes~\cite{alain2016} show how linearly decodable the label is at each layer. Chen et al.~\cite{chen2019} train one probe per
+layer and feed all probe outputs to a gradient-boosting meta-model that predicts whether the base network is correct; their gains are
+largest under label noise. Font et al.~\cite{font2025} compare the nearest training neighbors across layers, and Gorbett and
+Blanchard~\cite{gorbett2022} train a classifier on penultimate features. The depth at which a prediction is formed has also been related
+to example difficulty~\cite{baldock2021}. These works confirm that the internal signal exists, but their meta-models are not interpretable.
 
-\subsection{Fuzzy systems for uncertainty}
-Wang--Mendel~\cite{wangmendel1992}, Takagi--Sugeno~\cite{takagi1985}. \todo{completar}
+\subsection{Fuzzy systems for uncertainty and explanation}
+Fuzzy rule-based systems have been used to explain deep networks from attribution values~\cite{aghaeipoor2023} and to model uncertainty
+inside the network through type-2 or neuro-fuzzy layers. Rule learning from data dates back to Wang and Mendel~\cite{wangmendel1992},
+and Takagi--Sugeno models~\cite{takagi1985} combine linguistic antecedents with numeric consequents. To our knowledge, no previous work
+applies fuzzy rules to the internal behavior of a trained network to detect its errors.
 
 % =====================================================================
 \section{Method}
+
+Let $f$ be a trained classifier with $K$ classes, kept frozen. For an input $x$, $f$ predicts $\hat y(x)$ with confidence $p(x)$:
+in the binary case (HAM10000), $p$ is the sigmoid output $P(\text{malignant}\mid x)$ and $\hat y = \mathbf{1}[p \ge \tau]$, with the
+threshold $\tau$ chosen on a validation set (Youden index); in the multiclass case, $p$ is the maximum softmax probability.
+The goal is a score $r(x)$ that is high when $\hat y(x)$ is wrong.
+
 \subsection{Reading the network}
-\todo{probes por bloco (trocas de opinião, profundidade da decisão, entropia dos probes, concordância no fim, salto final);
-vistas (TTA); vizinhos.}
+\label{sec:reading}
+
+\textit{The path through the blocks.}
+Let $a_b(x)$ be the output of block $b \in \{1,\dots,B\}$, averaged over the spatial positions. On a set of reference training images,
+we train one probe per block, $g_b$, a logistic regression (with standardization, and PCA to 256 dimensions for wide layers) whose target
+is the \emph{network's decision} $\hat y$, not the label. The probe therefore answers: ``had the network stopped at block $b$, what would
+it answer?''. For a test image, let $c_b(x) = g_b(\hat y(x) \mid a_b(x))$ be the probability that block $b$ already gives the final answer,
+and $s_b(x) = \mathbf{1}[\arg\max g_b(a_b(x)) = \hat y(x)]$ its agreement. We compute
+\begin{align}
+  \textit{switches} &= \textstyle\sum_{b=2}^{B} |s_b - s_{b-1}|, \\
+  \textit{decision depth} &= \tfrac{1}{B}\max\{b : s_b = 0\}, \\
+  \textit{probe entropy} &= \tfrac{1}{B}\textstyle\sum_{b} H\big(g_b(a_b)\big)/\log K, \\
+  \textit{final agreement} &= \tfrac{1}{|L|}\textstyle\sum_{b \in L} c_b, \\
+  \textit{final jump} &= |p(x) - c_B(x)|.
+\end{align}
+where $L$ holds the last $\lfloor B/3 \rfloor$ blocks; the decision depth is zero when all blocks agree with $\hat y$ and follows the prediction depth of Baldock et al.~\cite{baldock2021}.
+
+\textit{Stability across views.}
+Each image is also passed through $V-1$ label-preserving transformations (flips and a 180$^\circ$ rotation for skin lesions; a horizontal flip and
+2-pixel shifts for CIFAR; small shifts only for SVHN and MNIST, where flips change the digit). We record the fraction of views whose decision differs from $\hat y$ (\textit{view flips}),
+the standard deviation of the confidence in $\hat y$ across views (\textit{view std}) and the standard deviation of the probe path
+$(c_1,\dots,c_B)$ across views, averaged over blocks (\textit{path std}).
+
+\textit{Familiarity.}
+In the penultimate space, we retrieve the $k=15$ nearest reference images (cosine similarity) and record the fraction whose network
+decision differs from $\hat y$ (\textit{neighbor disagreement}) and their mean distance divided by the median distance among reference
+images (\textit{neighbor distance}).
+
+Together with $p$ itself, these eleven features describe the answer, the path, the stability and the familiarity of each prediction.
+The three view features require $V$ forward passes; all others require one pass.
 
 \subsection{Additive fuzzy model}
-Each feature $x_j$ is covered by three triangular terms (LOW, MEDIUM, HIGH) centred at its 5th, 50th and 95th percentiles;
-for the network output $P$ in the binary case the centres are fixed at $\{0, \tau, 1\}$, where $\tau$ is the decision threshold.
-The risk of error is
+Each selected feature $x_j$ is covered by three triangular membership functions, \term{low}, \term{medium} and \term{high}, forming a strong
+partition with peaks at its 5th, 50th and 95th percentiles. For the binary output $p$, the peaks are fixed at $\{0, \tau, 1\}$, so that
+\term{medium} means ``at the decision threshold''. The risk of error is
 \begin{equation}
   r(\mathbf{x}) = \sigma\Big(b + \sum_{j=1}^{d}\sum_{k=1}^{3} w_{jk}\,\mu_{jk}(x_j)\Big),
+  \label{eq:aditivo}
 \end{equation}
-where $\mu_{jk}$ is the membership of $x_j$ in term $k$ and $w_{jk}$ is the weight of rule
-``IF $x_j$ is $k$ THEN risk changes by $w_{jk}$''. Weights are learned by logistic regression.
+where $\mu_{jk}$ is the membership of $x_j$ in term $k$ and $\sigma$ is the logistic function. Each pair $(j,k)$ is a rule
+``IF $x_j$ is $k$ THEN the log-odds of error change by $w_{jk}$'', so the model is a zero-order Takagi--Sugeno system~\cite{takagi1985}
+with single-antecedent rules whose consequents are added and passed through $\sigma$. The weights are learned by $\ell_2$-regularized
+logistic regression on the memberships, with the network's error ($\hat y \ne y$) as target. With $d=4$ features the model has 12 rules
+and a bias; a positive weight means that the condition raises the risk.
+
+\subsection{Feature selection}
+We always include $p$, since the answer itself is the strongest single signal, and add the $d-1=3$ features with the highest
+\emph{AUROC beyond $P$}: the AUROC for detecting errors computed within five quantile bins of $p$ and averaged with bin sizes as weights.
+It measures what a feature adds among images with similar confidence. A candidate is skipped if its absolute Spearman correlation with
+an already selected feature is at least 0.85. Selection is repeated inside every training fold. A variant without the three view features
+(one forward pass) is also reported.
+
+% =====================================================================
+\section{Experimental Setup}
+
+\subsection{Scenarios and networks}
+Table~\ref{tab:redes} lists the eight scenarios. HAM10000~\cite{tschandl2018} is split by lesion (one image per lesion, so no lesion
+appears in two sets) into training, validation and test sets (70/10/20\%), with \textit{mel}, \textit{bcc} and \textit{akiec} as malignant.
+We use all lesions (five seeds) and a 3,000-lesion subset (three seeds). An ImageNet-pretrained EfficientNet-B0 with a two-layer head is
+fine-tuned for 15 epochs (AdamW), and the epoch and threshold are selected on the validation set; its 18 sub-blocks are probed.
+The other scenarios reproduce the settings of the papers we compare with: ResNet-32 on CIFAR-10, clean and with 30\% of the training
+labels replaced by another class~\cite{chen2019}; VGG-16 on CIFAR-10 and CIFAR-100, a small CNN on SVHN and an MLP on MNIST~\cite{corbiere2019,jaeger2023}.
+Each network is trained once per seed and kept frozen; 5,000 training images serve as reference for probes, neighbors and Mahalanobis.
+
+\subsection{Competing detectors}
+All detectors score the same test images of the same frozen network (higher score = more likely error).
+\emph{Without training:} softmax confidence (MSP) and entropy~\cite{hendrycks2017}, distance to the threshold (binary), view standard
+deviation (TTA), MC Dropout with $T=30$ passes through the head~\cite{gal2016}, Mahalanobis with a shared covariance~\cite{lee2018}
+and Deep $k$NN~\cite{papernot2018}.
+\emph{Trained:} an output-only model (logistic regression on $p$ and $p^2$ in the binary case; equal to MSP in the multiclass case),
+Chen et al.~\cite{chen2019} (label-trained probes at every block, top-3 probabilities per probe, gradient boosting),
+Font et al.~\cite{font2025} (layer-wise nearest neighbors), Gorbett and Blanchard~\cite{gorbett2022} (linear SVM on penultimate features)
+and a post-hoc version of ConfidNet~\cite{corbiere2019} (an MLP that regresses the true-class probability from penultimate features).
+All trained detectors, including ours, use the same stratified 5-fold cross-validation on the test set, and are evaluated on their
+out-of-fold scores.
+
+\subsection{Metrics}
+The main metric is the AUROC for separating the network's errors from its correct predictions. We also report the AUPR of errors,
+FPR at 95\% TPR, the excess area under the risk--coverage curve (E-AURC)~\cite{jaeger2023} and the number of errors found when the
+10\%, 20\% and 30\% most uncertain images are referred to an expert. Differences in AUROC are tested per run with a paired bootstrap
+(1,000 resamples shared by all methods); a difference is significant when its 95\% confidence interval excludes zero.
+
+% =====================================================================
+\section{Results}
+
+\input{tabelas_en}
+
+\subsection{Detection performance}
+Table~\ref{tab:auroc} reports the AUROC. The additive fuzzy model has the best mean in six of the eight scenarios and ties the softmax
+on SVHN (0.926); on MNIST, where the network errs in under 1\% of the images, it is 0.004 below the best detector. It also has the lowest
+E-AURC in the same six scenarios, e.g.\ 14.8 vs.\ 22.0 for Chen et al.\ and 45.4 for MSP on noisy CIFAR-10.
+Table~\ref{tab:ganho} shows that the gain over the softmax grows when the softmax is less reliable: it is negligible on MNIST and SVHN,
+0.01--0.02 on clean CIFAR, 0.05--0.09 on HAM10000 and 0.11 on CIFAR-10 with label noise. Against Chen et al., the closest learned competitor,
+the fuzzy model is significantly better in 18 of 26 runs and significantly worse in none (Table~\ref{tab:signif}).
+
+On HAM10000 the picture is more balanced. The fuzzy model (0.916), Chen et al.\ (0.909) and the output-only model (0.907) are close,
+and the gain over Chen et al.\ is significant in only one of five seeds. When 20\% of the lesions are referred, the three methods find
+106, 104 and 107 of every 139 errors per 1,000 lesions (Table~\ref{tab:encontrados}), against 82 for MSP and MC Dropout. In this
+scenario, the advantage of the fuzzy model is its explanation, not its ranking. Mahalanobis is inverted on HAM10000 (AUROC 0.18):
+most errors are typical-looking lesions, close to the training data, rather than unusual ones.
+
+The single-pass variant, without views, keeps most of the gain where it matters (0.914 on HAM10000, 0.896 on noisy CIFAR-10), but on
+clean CIFAR-10 the views are needed to beat the softmax (0.919 vs.\ 0.928).
+
+\subsection{Rules and stability}
+The rules are short and consistent with intuition. On HAM10000 (seed 42), being at the threshold raises the log-odds of error
+(\term{medium} $p$: $+1.32$), a low final jump lowers it ($-1.53$) and a high path std across views raises it ($+1.16$).
+On noisy CIFAR-10, the dominant rules concern the end of the path: \term{low} final agreement $+1.57$, \term{high} final agreement $-2.18$.
+Across ten bootstrap resamples, the Spearman correlation between rule weights is 0.91--0.94 on HAM10000 (all lesions) and 0.90--0.98
+on the CIFAR scenarios. Fig.~\ref{fig:pertinencias} shows the membership functions and weights.
 
 \begin{figure}[t]
 \centering
 \IfFileExists{figuras/pertinencias.png}{\includegraphics[width=\columnwidth]{figuras/pertinencias.png}}{\fbox{\parbox{0.9\columnwidth}{\centering\vspace{1cm}
 coloque figuras/pertinencias.png (gerada por mostrar\_pertinencias.py)\vspace{1cm}}}}
-\caption{Membership functions and rule weights of the additive fuzzy model on HAM10000. \todo{legenda}}
+\caption{Membership functions (top) and rule weights (bottom) of the additive fuzzy model on HAM10000. A positive weight raises the risk of error.}
 \label{fig:pertinencias}
 \end{figure}
 
-\subsection{Feature selection}
-\todo{seleção por AUROC além de P; P sempre incluído; 4 features.}
+\subsection{Checks against real-world uncertainty}
+\textit{Biopsy.} On HAM10000 (all lesions, five seeds), the network errs on 29.1\% of the histopathology-confirmed lesions and on 3.1\%
+of those confirmed by follow-up, consensus or confocal microscopy: the cases on which the network hesitates are the ones that clinicians
+also sent to biopsy.
+\textit{Other photographs of the same lesion.} HAM10000 contains extra photographs of many test lesions, never used in training. The network
+changes its answer on 21\% of these lesions. Here, the distance to the threshold predicts this change best (AUROC 0.72), and the fuzzy model
+is less effective (0.63): it is tuned to predict errors, not instability across acquisitions.
+\textit{Human disagreement.} On CIFAR-10H~\cite{peterson2019}, with about 50 human labels per test image, the fuzzy model has the highest
+correlation with human disagreement under label noise (Spearman 0.28 vs.\ 0.11 for MSP); on the clean networks it is above MSP but below
+Gorbett and Blanchard (0.33 vs.\ 0.37 with ResNet-32 and 0.30 vs.\ 0.34 with VGG-16).
 
 % =====================================================================
-\section{Experimental Setup}
-\todo{datasets, redes, sementes, 5 folds, métricas: AUROC, AUPR, FPR@95, E-AURC, erros encontrados encaminhando 10/20/30\%.}
-
-% =====================================================================
-\section{Results}
-% As tabelas vêm de tabelas_latex.py. Apague do arquivo as que não couberem.
-\input{tabelas_en}
-
-\todo{discussão: ganho maior quando a confiança de saída é pouco confiável (ruído, ambiguidade clínica); empate no HAM com Chen e Só P;
-biópsia: 26\% de erro com histopatologia vs.\ 2.5\% sem.}
+\section{Discussion and Limitations}
+The features add most when the output is least trustworthy: under label noise, the final layers memorize wrong labels and the softmax
+becomes overconfident, while the probes still reveal that the earlier blocks disagree. On easy problems (MNIST, SVHN), the softmax is
+already near the ceiling and the internal reading adds nothing. On HAM10000, the binary output is already a strong signal once the
+threshold is taken into account, so internal features mainly provide the explanation.
+The detector is trained on the network's errors; with few errors, as in the 3,000-lesion subset, the variance across seeds is large.
+The view features multiply the inference cost by $V$, although the single-pass variant retains most of the gain.
+Finally, all detectors were trained by cross-validation on the test set of the same network; whether the rules transfer to another
+architecture is left for future work.
 
 % =====================================================================
 \section{Conclusion}
-\todo{}
+Reading a frozen network from the inside, through the path of its decision across blocks, its stability across views and the familiarity
+of the input, gives a misclassification score that is as accurate as the best competing detectors and, unlike them, can be stated as a
+dozen weighted fuzzy rules. The gain over the network's own confidence is largest when that confidence is least reliable, as under label
+noise and in skin-lesion classification. Future work will study whether the rules transfer across architectures, for instance with
+interval type-2 memberships that represent the disagreement between networks, and validate the referral policy with dermatologists.
 
 % Duplo-cego: sem agradecimentos na submissão.
 % \section*{Acknowledgment}

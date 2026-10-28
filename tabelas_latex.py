@@ -38,7 +38,7 @@ METODOS = [  # (nome na planilha, pt, en, grupo)
     ("Font et al. 2025", "Font et al.~\\cite{font2025}", "Font et al.~\\cite{font2025}", 1),
     ("Gorbett & Blanchard 2022", "Gorbett e Blanchard~\\cite{gorbett2022}", "Gorbett and Blanchard~\\cite{gorbett2022}", 1),
     ("ConfidNet", "ConfidNet~\\cite{corbiere2019}", "ConfidNet~\\cite{corbiere2019}", 1),
-    ("NOSSO: Wang-Mendel", "Wang-Mendel (nosso)", "Wang-Mendel (ours)", 2),
+    # Wang-Mendel fica fora das tabelas do artigo (só para consulta no relatorio.xlsx)
     ("NOSSO: Fuzzy aditivo (sem vistas)", "Fuzzy aditivo, sem vistas (nosso)", "Additive fuzzy, no views (ours)", 2),
     ("NOSSO: Fuzzy aditivo", "\\textbf{Fuzzy aditivo (nosso)}", "\\textbf{Additive fuzzy (ours)}", 2)]
 CURTOS = ["Softmax (MSP)", "MC Dropout (entropia)", "TTA (vistas)", "Chen et al. 2019", "Gorbett & Blanchard 2022", "Só P",
