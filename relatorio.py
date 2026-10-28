@@ -20,6 +20,7 @@ from PIL import Image
 from scipy.stats import spearmanr
 
 import config as C
+from comparacao import ENTRADA, FAMILIA
 
 warnings.filterwarnings("ignore")
 plt.rcParams.update({"figure.dpi": 130, "axes.spines.top": False, "axes.spines.right": False, "font.size": 10})
@@ -74,7 +75,21 @@ def agregar(met):
         ag["ganho AUROC sobre Chen (média)"] = g["ganho AUROC sobre Chen"].mean()
         ag["sementes com ganho significativo sobre Chen"] = g["IC95 Chen inf"].apply(lambda s: int((s > 0).sum()))
         ag["sementes com perda significativa para Chen"] = g["IC95 Chen sup"].apply(lambda s: int((s < 0).sum()))
-    return ag.reset_index()
+    ag = ag.reset_index()
+    ag.insert(2, "família", ag["método"].map(FAMILIA).fillna(""))
+    ag.insert(3, "entrada", ag["método"].map(ENTRADA).fillna(""))
+    return ag
+
+
+def por_familia(ag):
+    """Comparações justas: o melhor método de cada família em cada cenário, e o nosso fuzzy aditivo ao lado.
+    Linhas = família; colunas = cenário; célula = 'método: AUROC'."""
+    a = ag[ag["família"] != ""]
+    melhor = a.loc[a.groupby(["experimento", "família"])["AUROC (média)"].idxmax()]
+    longo = melhor.assign(v=melhor["método"] + ": " + melhor["AUROC (média)"].map("{:.3f}".format))
+    tab = longo.pivot(index="família", columns="experimento", values="v")
+    numeros = melhor.pivot(index="família", columns="experimento", values="AUROC (média)")
+    return tab.reset_index(), numeros.reset_index()
 
 
 def tabela_geral(ag):
@@ -303,6 +318,7 @@ if __name__ == "__main__":
     pasta = saida / "figuras"; pasta.mkdir(parents=True, exist_ok=True)
     figs = graficos(R, ag, pasta, saida)
     geral = tabela_geral(ag).reset_index()
+    geral.insert(1, "família", geral["método"].map(FAMILIA).fillna(""))
     pub = publicados(ag)
     nossos = ag[ag["método"].str.startswith("NOSSO") | (ag["método"] == "Só P")][
         ["experimento", "método", "AUROC (média)", "AUROC (desvio)", "E-AURC (x1000) (média)", "acurácia encaminhando 20% (média)",
@@ -310,8 +326,11 @@ if __name__ == "__main__":
         + [c for c in ("ganho AUROC sobre Chen (média)", "sementes com ganho significativo sobre Chen",
                        "sementes com perda significativa para Chen") if c in ag] + ["sementes"]]
     redes = R["redes"]
+    fam_txt, fam_num = por_familia(ag)
     with pd.ExcelWriter(saida / "relatorio.xlsx") as xw:
         geral.to_excel(xw, sheet_name="visao_geral_AUROC", index=False)
+        fam_txt.to_excel(xw, sheet_name="melhor_por_familia", index=False)
+        fam_num.to_excel(xw, sheet_name="melhor_por_familia_AUROC", index=False)
         nossos.to_excel(xw, sheet_name="nossos_vs_so_P", index=False)
         ag.to_excel(xw, sheet_name="por_experimento_media_desvio", index=False)
         R["metricas"].to_excel(xw, sheet_name="por_semente", index=False)
@@ -324,7 +343,8 @@ if __name__ == "__main__":
         for k in ("dx_type", "multifotos", "cifar10h"):
             if len(R[k]):
                 R[k].to_excel(xw, sheet_name=f"extra_{k}", index=False)
-    tabs = [("Visão geral: AUROC (média ± desvio entre sementes)", geral), ("Nossos métodos × só P", nossos),
+    tabs = [("Visão geral: AUROC (média ± desvio entre sementes)", geral),
+            ("Comparação por família: o melhor de cada família em cada cenário", fam_txt), ("Nossos métodos × só P", nossos),
             ("Comparação com os números publicados (ganho sobre o softmax de cada um)", pub)]
     if len(redes):
         tabs.append(("Desempenho das redes", redes.drop(columns=[c for c in ("limiar",) if c in redes and redes[c].isna().all()])))

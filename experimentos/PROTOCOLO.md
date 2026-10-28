@@ -77,6 +77,18 @@ Experimentos:
 | E8 | Tipo 2 (`ham_tipo2`) | Termo = envelope (mín, máx) das curvas de cada rede de origem; nota pontual com as pertinências do meio da faixa; intervalo **exato** no fuzzy aditivo (nota linear nas pertinências) | n/a | a faixa representa a discordância entre redes | `fuzzy_t2.py: pert_t2, FuzzyAditivo.nota_t2` | conferido (testado contra força bruta) |
 | E9 | Deixa uma arquitetura de fora | Aprende nas outras redes (metade 1 do teste) e avalia na rede de fora (metade 2), e troca; limiar das zonas escolhido nas redes de origem (20% acima) | n/a | testar se as regras se transferem | `fuzzy_t2.py: deixa_uma_fora` | conferido |
 
+### E10–E13. Métodos fuzzy de outros autores (pipeline principal, `fuzzy_outros.py`)
+
+| # | Método | O que fizemos | Igual ao original? | Por quê / fonte | Onde no código | Status |
+|---|---|---|---|---|---|---|
+| E10 | Barna et al. 2026 | Possibilidade de erro = máx(similaridade de Goguen p2/p1, 1 − p1) sobre o softmax; sem treino | **não**: o original usa também a distância da câmera | a distância não existe nas bases; fórmula reconstruída da descrição do artigo | `fuzzy_outros.py: barna2026` | a conferir (fórmula exata no PDF) |
+| E11 | Aghaeipoor et al. 2023 | Gradiente×entrada na penúltima camada, resumido em 6 números; 3 escolhidos por AUROC; regras Wang–Mendel prevêem o erro | **não**: o original explica a predição, não o erro, e usa as atribuições inteiras | a penúltima camada tem centenas de dimensões | `fuzzy_outros.py: Aghaeipoor2023, atribuicoes` | conferido |
+| E12 | Denoeux 2023 (ENNreg) | 10 protótipos evidenciais com números fuzzy gaussianos (média, variância, precisão), regra produto-interseção normalizada, treino por verossimilhança gaussiana; alvo = confiança na classe verdadeira; escore = 1 − limite inferior de 90% | **não**: a perda do original é outra (simplificada) | ENNreg é de regressão; usamos a TCP como alvo, como o ConfidNet | `fuzzy_outros.py: ENNreg` | a conferir |
+| E13 | Msaddi e Kumbasar 2026 | TSK tipo 2 intervalar, 8 regras, gaussianas com FOU, redução Karnik–Mendel exata, perda pinball (5% e 95%) + log-cosh, CQR com 25% do treino para calibrar; alvo = TCP; escore = 1 − limite inferior calibrado | parcial: mesma estrutura (IT2-FLS + CQR); o original é de regressão | cobertura testada em dados sintéticos: 0,90 para alvo de 0,90 | `fuzzy_outros.py: Msaddi2026` | conferido |
+
+ENNreg e Msaddi e Kumbasar recebem as mesmas características que o nosso fuzzy aditivo (P + 3 escolhidas no mesmo fold),
+para a comparação ser justa. Cada método tem uma **família** e uma **entrada** (`comparacao.py: FAMILIA, ENTRADA`).
+
 ## F. Métricas
 
 | # | Item | O que fizemos | Igual a Chen? | Por quê / fonte | Onde no código | Status |

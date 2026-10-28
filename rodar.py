@@ -94,6 +94,11 @@ def rodar_um(exp, semente, disp, refazer):
         tab.to_csv(pasta / "features.csv.gz", index=False)
         np.savez_compressed(pasta / "extras.npz", **ext)
 
+    if "atrib" not in ext:                                         # atribuições na penúltima camada (Aghaeipoor et al. 2023)
+        import fuzzy_outros as fo
+        ext["atrib"] = fo.atribuicoes(rede, ext["penultima"], tab["decisao"].values, disp)
+        np.savez_compressed(pasta / "extras.npz", **ext)
+
     # 3) comparação -------------------------------------------------------------------------------------
     if (pasta / "metricas.csv").exists() and refazer not in ("tudo", "rede", "leitura", "avaliacao"):
         log("  avaliação já feita (use --refazer avaliacao para refazer)")

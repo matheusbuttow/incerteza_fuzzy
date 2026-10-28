@@ -21,6 +21,12 @@ Treinados em validação cruzada (mesmos folds para todos):
   NOSSO: Fuzzy aditivo     regras fuzzy de 1 condição com pesos (P + 3 features internas)
   NOSSO: Fuzzy aditivo (sem vistas)  o mesmo, proibido de usar as vistas: UMA passagem pela rede.
                            Mostra quanto do ganho vem da leitura interna e quanto das vistas (TTA).
+Fuzzy de outros autores (fuzzy_outros.py; adaptados à tarefa, ver PROTOCOLO):
+  Barna et al. 2026        possibilidade de erro sobre o softmax (sem treino)
+  Aghaeipoor et al. 2023   regras Wang-Mendel sobre atribuições da penúltima camada
+  Denoeux 2023 (ENNreg)    protótipos evidenciais com números fuzzy (mesmas características que o nosso)
+  Msaddi e Kumbasar 2026   fuzzy tipo 2 intervalar + predição conforme (mesmas características que o nosso)
+Cada método tem uma FAMÍLIA (os tópicos da revisão) e a ENTRADA que usa, para comparações justas dentro de cada família.
 Os nossos métodos também são comparados diretamente com Chen et al. 2019 (IC 95% pareado).
 Todos os escores: MAIOR = MAIS INCERTO (mais chance de a rede errar).
 """
@@ -39,6 +45,7 @@ from sklearn.svm import LinearSVC
 
 import config as C
 import fuzzy as fz
+import fuzzy_outros as fo
 from leitura import NOSSAS
 
 warnings.filterwarnings("ignore")
@@ -47,13 +54,40 @@ SEM_TREINO = {"Softmax (MSP)": "msp", "Entropia do softmax": "entropia_softmax",
               "TTA (vistas)": "p_vistas_std", "MC Dropout (desvio)": "mc_dropout_std", "MC Dropout (entropia)": "mc_entropia",
               "Mahalanobis": "mahalanobis", "Deep kNN": "vizinhos_discordam"}
 NOSSOS = ["NOSSO: Wang-Mendel", "NOSSO: Fuzzy aditivo", "NOSSO: Fuzzy aditivo (sem vistas)"]
+FUZZY_OUTROS = ["Barna et al. 2026", "Aghaeipoor et al. 2023", "Denoeux 2023 (ENNreg)", "Msaddi e Kumbasar 2026"]
+
+# família (tópico da revisão) e entrada de cada método — comparações justas são feitas dentro da mesma família/entrada
+FAMILIA = {
+    "Softmax (MSP)": "1. Só a saída", "Entropia do softmax": "1. Só a saída", "Distância ao limiar": "1. Só a saída",
+    "Só P": "1. Só a saída",
+    "TTA (vistas)": "2. Várias passagens", "MC Dropout (desvio)": "2. Várias passagens", "MC Dropout (entropia)": "2. Várias passagens",
+    "Mahalanobis": "3. Distância no espaço interno", "Deep kNN": "3. Distância no espaço interno",
+    "Chen et al. 2019": "4. Camadas internas", "Font et al. 2025": "4. Camadas internas",
+    "Gorbett & Blanchard 2022": "4. Camadas internas",
+    "ConfidNet": "5. Confiança aprendida",
+    "Barna et al. 2026": "8. Fuzzy (outros autores)", "Aghaeipoor et al. 2023": "8. Fuzzy (outros autores)",
+    "Denoeux 2023 (ENNreg)": "8. Fuzzy (outros autores)", "Msaddi e Kumbasar 2026": "8. Fuzzy (outros autores)",
+    "NOSSO: Fuzzy aditivo": "Nosso (4 + 8)", "NOSSO: Fuzzy aditivo (sem vistas)": "Nosso (4 + 8)",
+    "NOSSO: Wang-Mendel": "Nosso — interno (fora do artigo)"}
+ENTRADA = {
+    "Softmax (MSP)": "saída", "Entropia do softmax": "saída", "Distância ao limiar": "saída", "Só P": "saída",
+    "TTA (vistas)": "saída de várias vistas", "MC Dropout (desvio)": "saída de várias passagens", "MC Dropout (entropia)": "saída de várias passagens",
+    "Mahalanobis": "penúltima camada", "Deep kNN": "penúltima camada",
+    "Chen et al. 2019": "todas as camadas", "Font et al. 2025": "todas as camadas", "Gorbett & Blanchard 2022": "penúltima camada + saída",
+    "ConfidNet": "penúltima camada",
+    "Barna et al. 2026": "saída", "Aghaeipoor et al. 2023": "atribuições da penúltima camada",
+    "Denoeux 2023 (ENNreg)": "nossas características", "Msaddi e Kumbasar 2026": "nossas características",
+    "NOSSO: Fuzzy aditivo": "nossas características", "NOSSO: Fuzzy aditivo (sem vistas)": "nossas características (1 passagem)",
+    "NOSSO: Wang-Mendel": "nossas características"}
 VISTAS = ["vistas_mudam", "p_vistas_std", "trajetoria_vistas"]     # exigem passar a imagem várias vezes pela rede
 REFERENCIA = {"Softmax (MSP)": "Hendrycks & Gimpel 2017", "Entropia do softmax": "—", "Distância ao limiar": "—",
               "TTA (vistas)": "—", "MC Dropout (desvio)": "Gal & Ghahramani 2016", "MC Dropout (entropia)": "Gal & Ghahramani 2016",
               "Mahalanobis": "Lee et al. 2018", "Deep kNN": "Papernot & McDaniel 2018", "Só P": "referência a superar",
               "Chen et al. 2019": "AISTATS 2019", "Font et al. 2025": "arXiv 2025", "Gorbett & Blanchard 2022": "WACV-W 2022",
               "ConfidNet": "Corbière et al., NeurIPS 2019", "NOSSO: Wang-Mendel": "proposto", "NOSSO: Fuzzy aditivo": "proposto",
-              "NOSSO: Fuzzy aditivo (sem vistas)": "proposto, uma passagem"}
+              "NOSSO: Fuzzy aditivo (sem vistas)": "proposto, uma passagem",
+              "Barna et al. 2026": "Applied Sciences 2026", "Aghaeipoor et al. 2023": "IEEE TFS 2023",
+              "Denoeux 2023 (ENNreg)": "IEEE TFS 2023", "Msaddi e Kumbasar 2026": "IEEE TETCI 2026"}
 
 
 def _p2(tab):
@@ -66,7 +100,8 @@ def avaliar(tab, extras, binario, limiar, y_teste, semente):
     y = tab.erro.values
     fixos = {"p": [0.0, limiar, 1.0]} if binario and limiar is not None else None
     oof = {m: tab[c].values.astype(float) for m, c in SEM_TREINO.items() if not (m == "Distância ao limiar" and not binario)}
-    treinados = (["Só P"] if binario else []) + ["Chen et al. 2019", "Font et al. 2025", "Gorbett & Blanchard 2022", "ConfidNet"] + NOSSOS
+    treinados = (["Só P"] if binario else []) + ["Chen et al. 2019", "Font et al. 2025", "Gorbett & Blanchard 2022", "ConfidNet"] + NOSSOS \
+        + [m for m in FUZZY_OUTROS if m != "Barna et al. 2026"]
     if not binario:
         oof["Só P"] = tab["msp"].values.astype(float)                       # várias classes: o próprio softmax
     for m in treinados:
@@ -77,6 +112,11 @@ def avaliar(tab, extras, binario, limiar, y_teste, semente):
          "Font et al. 2025": np.c_[_p2(tab), tab[["font_dc", "font_lu"]].values],
          "Gorbett & Blanchard 2022": np.c_[pen, top, _p2(tab)]}
     tcp = probs[np.arange(len(y)), y_teste]                                   # confiança na classe verdadeira (ConfidNet)
+    dec = tab["decisao"].values.astype(int)
+    oof["Barna et al. 2026"] = fo.barna2026(probs, dec)
+    atrib = fo.resumo_atribuicoes(extras["atrib"]) if "atrib" in extras else None
+    if atrib is None:
+        treinados.remove("Aghaeipoor et al. 2023"); del oof["Aghaeipoor et al. 2023"]
     escolhas = {m: [] for m in NOSSOS}
     cand = [c for c in NOSSAS if c in tab]
     cand_sem_vistas = [c for c in cand if c not in VISTAS]
@@ -95,6 +135,14 @@ def avaliar(tab, extras, binario, limiar, y_teste, semente):
                               ("NOSSO: Fuzzy aditivo (sem vistas)", C.FEATURES_ADITIVO, fz.FuzzyAditivo, cand_sem_vistas)]:
             feats = fz.selecionar(d, cs, k); escolhas[m].append(feats)
             oof[m][te] = Mod(fixos).fit(d[feats].values, y[tr], feats).predict_proba(tab.iloc[te][feats].values)[:, 1]
+            if m == "NOSSO: Fuzzy aditivo":
+                f_ad = feats
+        # fuzzy de outros autores: ENNreg e Msaddi recebem as MESMAS características que o nosso fuzzy aditivo
+        Xf = tab[f_ad].values.astype(float)
+        oof["Denoeux 2023 (ENNreg)"][te] = fo.ENNreg(semente=semente).fit(Xf[tr], tcp[tr]).score(Xf[te])
+        oof["Msaddi e Kumbasar 2026"][te] = fo.Msaddi2026(semente=semente).fit(Xf[tr], tcp[tr]).score(Xf[te])
+        if atrib is not None:
+            oof["Aghaeipoor et al. 2023"][te] = fo.Aghaeipoor2023().fit(atrib[tr], y[tr]).score(atrib[te])
     return oof, escolhas, fixos
 
 
@@ -129,7 +177,7 @@ def tabela(y, oof, base="Só P", rival="Chen et al. 2019", semente=0):
     for m, s in oof.items():
         s = np.asarray(s, float); mt = metricas(y, s)
         d, dc = auc_b[m] - auc_b[base], auc_b[m] - auc_b[rival]
-        lin.append({"método": m, "referência": REFERENCIA.get(m, ""), **mt,
+        lin.append({"método": m, "família": FAMILIA.get(m, ""), "entrada": ENTRADA.get(m, ""), "referência": REFERENCIA.get(m, ""), **mt,
                     "ganho AUROC sobre só P": mt["AUROC"] - roc_auc_score(y, oof[base]),
                     "IC95 ganho inf": np.percentile(d, 2.5), "IC95 ganho sup": np.percentile(d, 97.5),
                     "ganho AUROC sobre Chen": mt["AUROC"] - roc_auc_score(y, oof[rival]),

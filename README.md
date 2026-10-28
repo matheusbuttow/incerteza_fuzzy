@@ -113,6 +113,22 @@ Todos os métodos usam a **mesma rede congelada** e as **mesmas imagens de teste
 | **NOSSO: Wang-Mendel** (P + 2 features internas) | proposto | sim |
 | **NOSSO: Fuzzy aditivo** (P + 3 features internas) | proposto | sim |
 | **NOSSO: Fuzzy aditivo (sem vistas)** — uma passagem pela rede | proposto | sim |
+| Barna et al. 2026 — possibilidade de erro sobre o softmax | Applied Sciences 2026 | não |
+| Aghaeipoor et al. 2023 — regras fuzzy sobre atribuições da penúltima camada | IEEE TFS 2023 | sim |
+| Denoeux 2023 (ENNreg) — protótipos evidenciais com números fuzzy | IEEE TFS 2023 | sim |
+| Msaddi e Kumbasar 2026 — fuzzy tipo 2 intervalar + predição conforme | IEEE TETCI 2026 | sim |
+
+Os quatro métodos fuzzy de outros autores foram adaptados à detecção de erros (detalhes em `fuzzy_outros.py`
+e em `experimentos/PROTOCOLO.md`, itens E10–E13). ENNreg e Msaddi e Kumbasar recebem as **mesmas características**
+que o nosso fuzzy aditivo.
+
+**Famílias (comparações justas).** Cada método tem uma família, a coluna `família` em `metricas.csv` e no relatório:
+1. só a saída · 2. várias passagens · 3. distância no espaço interno · 4. camadas internas · 5. confiança aprendida ·
+8. fuzzy de outros autores · nosso. A aba `melhor_por_familia` do `relatorio.xlsx` mostra o melhor de cada família em
+cada cenário. A coluna `entrada` diz o que cada método usa (saída, penúltima camada, todas as camadas, nossas características).
+
+Para acrescentar os métodos novos a resultados que já existem, sem retreinar nem reler a rede:
+`python rodar.py --refazer avaliacao` e depois `python relatorio.py`.
 
 Os nossos métodos também são comparados diretamente com Chen et al. 2019 (ganho de AUROC com IC 95%, bootstrap pareado).
 
