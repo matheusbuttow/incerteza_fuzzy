@@ -114,7 +114,9 @@ def rodar_um(exp, semente, disp, refazer):
         import fuzzy as fz
         from leitura import CLASSICAS, NOSSAS
         cand = [c for c in NOSSAS + CLASSICAS if c in tab and tab[c].nunique() > 1]
-        fz.diagnostico(tab, cand, escolhas["NOSSO: Wang-Mendel"] + escolhas["NOSSO: Fuzzy aditivo"]).to_csv(pasta / "diagnostico_features.csv", index=False)
+        fz.diagnostico(tab, cand, escolhas["NOSSO: Fuzzy aditivo"]).to_csv(pasta / "diagnostico_features.csv", index=False)
+        nossas = [c for c in NOSSAS if c in tab]   # correlação (Spearman) entre as 11 candidatas: motivo da seleção
+        tab[nossas].corr("spearman").round(3).to_csv(pasta / "correlacao_features.csv")
         rwm, rad, est = cmp.regras_finais(tab, fixos)
         rwm.to_csv(pasta / "regras_wang_mendel.csv", index=False); rad.to_csv(pasta / "regras_fuzzy_aditivo.csv", index=False)
         _json({**est, "escolhas por fold": escolhas}, pasta / "regras_info.json")

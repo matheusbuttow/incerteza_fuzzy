@@ -61,6 +61,7 @@ def ler_tudo(saida):
     return {"metricas": met, "redes": redes, "estabilidade": est, "diagnostico": junta("diagnostico_features.csv"),
             "rejeicao": junta("curva_rejeicao.csv"), "risco": junta("curva_risco_cobertura.csv"), "roc": junta("curva_roc.csv"),
             "regras_wm": junta("regras_wang_mendel.csv"), "regras_ad": junta("regras_fuzzy_aditivo.csv"),
+            "corr": junta("correlacao_features.csv", lambda p: pd.read_csv(p).rename(columns={"Unnamed: 0": "feature"})),
             "dx_type": junta("ham_dx_type.csv"), "multifotos": junta("ham_multifotos.csv"), "cifar10h": junta("cifar10h.csv")}
 
 
@@ -338,6 +339,17 @@ if __name__ == "__main__":
         pub.to_excel(xw, sheet_name="numeros_publicados", index=False)
         R["estabilidade"].to_excel(xw, sheet_name="estabilidade_regras", index=False)
         R["diagnostico"].to_excel(xw, sheet_name="diagnostico_features", index=False)
+        if len(R["corr"]):   # correlação média entre as candidatas (todas as execuções): por que só P + 3 entram
+            R["corr"].drop(columns=["experimento", "semente"]).groupby("feature", sort=False).mean().round(2) \
+                .to_excel(xw, sheet_name="correlacao_features")
+        if len(R["diagnostico"]):
+            from leitura import NOSSAS
+            d = R["diagnostico"][R["diagnostico"].feature.isin(NOSSAS)]
+            nexec = d.groupby(["experimento", "semente"]).ngroups
+            res = d.groupby("feature").agg(AUROC=("AUROC", "mean"), AUROC_alem_de_P=("AUROC além de P", "mean"),
+                                            corr_com_P=("corr. com P", lambda v: v.abs().mean()), escolhida=("escolhida (folds)", "sum"))
+            res["escolhida_%"] = 100 * res.pop("escolhida") / (nexec * C.N_FOLDS)
+            res.sort_values("escolhida_%", ascending=False).round(3).to_excel(xw, sheet_name="selecao_features")
         R["regras_wm"].to_excel(xw, sheet_name="regras_wang_mendel", index=False)
         R["regras_ad"].to_excel(xw, sheet_name="regras_fuzzy_aditivo", index=False)
         for k in ("dx_type", "multifotos", "cifar10h"):
