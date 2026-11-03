@@ -539,7 +539,12 @@ MC Dropout com $T=30$ passagens pela cabeça~\cite{gal2016}, Mahalanobis com cov
 \emph{Com treino:} um modelo só com a saída (regressão logística sobre $p$ e $p^2$ no binário; igual ao MSP no multiclasse),
 Chen et al.~\cite{chen2019} (sondas treinadas com o rótulo em todos os blocos, as 3 maiores probabilidades de cada sonda, \textit{gradient boosting}),
 Font et al.~\cite{font2025}, Gorbett e Blanchard~\cite{gorbett2022} (SVM linear sobre a penúltima camada) e uma versão pós-treino do
-ConfidNet~\cite{corbiere2019}. Todos os detectores com treino, inclusive o sistema fuzzy, usam a mesma validação cruzada estratificada de
+ConfidNet~\cite{corbiere2019}.
+\emph{Outros sistemas fuzzy:} Barna et al.~\cite{barna2026} (implicação de Goguen entre as duas maiores probabilidades, sem treino),
+Aghaeipoor et al.~\cite{aghaeipoor2023} (regras aprendidas sobre estatísticas das atribuições da penúltima camada),
+a regressão evidencial ENNreg~\cite{denoeux2023} e o TSK intervalar de tipo 2 com calibração conforme de Msaddi e
+Kumbasar~\cite{msaddi2026}. Os dois últimos preveem a confiança na classe verdadeira e recebem \emph{as mesmas} características
+escolhidas para o nosso sistema, de modo que a comparação isola o modelo fuzzy, e não a entrada. Todos os detectores com treino, inclusive o sistema fuzzy, usam a mesma validação cruzada estratificada de
 5 partições no conjunto de teste e são avaliados nas pontuações fora da partição.
 
 \subsection{Métricas}
