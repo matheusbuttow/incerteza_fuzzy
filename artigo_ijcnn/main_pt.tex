@@ -295,7 +295,7 @@ que exige uma única passagem pela rede.
 \begin{table}[t]
 \centering
 \caption{As onze características candidatas. $|\rho_p|$: mediana da correlação de Spearman com $p$;
-Esc.: porcentagem dos 260 ajustes (26 execuções $\times$ 10 dobras) em que a característica foi escolhida.}
+Esc.: porcentagem das 26 execuções (8 cenários, 3 a 5 sementes) em que a característica entrou no modelo final.}
 \label{tab:features}
 \footnotesize
 \setlength{\tabcolsep}{3pt}
@@ -304,15 +304,15 @@ Esc.: porcentagem dos 260 ajustes (26 execuções $\times$ 10 dobras) em que a c
  & Grupo & O que mede & $|\rho_p|$ & Esc. \\
 \midrule
 $p$ & resposta & confiança final da rede & 1,00 & 100\% \\
-$\sigma_V$ & estabilidade & variação de $p$ entre vistas & 0,82 & 69\% \\
-$A$ & caminho & confiança no último terço & 0,78 & 44\% \\
-$\sigma_{\mathbf c}$ & estabilidade & variação do caminho entre vistas & 0,52 & 40\% \\
-$\delta$ & familiaridade & distância aos vizinhos & 0,64 & 34\% \\
-$J$ & caminho & salto do último bloco à saída & 0,88 & 28\% \\
-$\bar H$ & caminho & indecisão média das sondas & 0,63 & 13\% \\
-$D$ & caminho & bloco em que a decisão firmou & 0,40 & 12\% \\
-$\nu$ & familiaridade & vizinhos com outra resposta & 0,35 & 9\% \\
-$\Delta_V$ & estabilidade & vistas com outra resposta & 0,39 & 2\% \\
+$\sigma_V$ & estabilidade & variação de $p$ entre vistas & 0,82 & 73\% \\
+$\delta$ & familiaridade & distância aos vizinhos & 0,64 & 54\% \\
+$\sigma_{\mathbf c}$ & estabilidade & variação do caminho entre vistas & 0,52 & 54\% \\
+$A$ & caminho & confiança no último terço & 0,78 & 46\% \\
+$J$ & caminho & salto do último bloco à saída & 0,88 & 35\% \\
+$D$ & caminho & bloco em que a decisão firmou & 0,40 & 15\% \\
+$\bar H$ & caminho & indecisão média das sondas & 0,63 & 12\% \\
+$\nu$ & familiaridade & vizinhos com outra resposta & 0,35 & 12\% \\
+$\Delta_V$ & estabilidade & vistas com outra resposta & 0,39 & 0\% \\
 $\mathrm{TV}$ & caminho & trocas de opinião & 0,22 & 0\% \\
 \bottomrule
 \end{tabular}
