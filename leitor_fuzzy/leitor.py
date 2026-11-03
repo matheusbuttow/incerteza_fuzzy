@@ -172,7 +172,9 @@ class LeitorFuzzy:
         return F
 
     # ------------------------------------------------------------------ treino
-    def fit(self, referencia, calibracao, log=print):
+    def preparar(self, referencia, log=print):
+        """Só a leitura: acha os blocos, treina as sondas e monta o banco de vizinhos (sem o sistema fuzzy).
+        Depois disso, `caracteristicas(dados)` já funciona."""
         x0, _ = next(_lotes(referencia, 2))
         if self.blocos_dados is None:
             self.blocos, self.cabeca = achar_blocos(self.rede, x0[:2].to(self.disp), self.max_blocos)
@@ -186,6 +188,11 @@ class LeitorFuzzy:
         self.banco, self.banco_dec = _unit(pen), dec
         self.dist_ref = float(np.median(self._knn(self.banco, excluir_si=True)[1])) + EPS
         self.n_classes = P.shape[1]
+        return self
+
+    def fit(self, referencia, calibracao, log=print):
+        """Leitura (`preparar`) + sistema fuzzy aprendido nos erros da rede na calibração."""
+        self.preparar(referencia, log)
         F = self.caracteristicas(calibracao)
         if "alucinou" not in F or F.alucinou.nunique() < 2:
             raise ValueError("A calibração precisa de rótulos e de pelo menos um erro e um acerto da rede.")
