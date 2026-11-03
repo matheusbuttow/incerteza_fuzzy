@@ -16,6 +16,8 @@
 \usepackage{booktabs,multirow}
 \usepackage{textcomp}
 \usepackage{xcolor}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.16}
 \usepackage[hidelinks]{hyperref}
 
 \newcommand{\todo}[1]{\textcolor{red}{[TODO: #1]}}
@@ -124,35 +126,142 @@ O sistema produz uma pontuação $r(x) \in [0,1]$, o risco de alucinação, em t
 \subsection{Etapa 1: leitura da rede}
 \label{sec:leitura}
 
-\textit{O caminho pelos blocos.}
-Seja $a_b(x)$ a saída do bloco $b \in \{1,\dots,B\}$, com média sobre as posições espaciais. Em imagens de referência do treino, treinamos
-uma sonda por bloco, $g_b$: uma regressão logística (com padronização, e PCA para 256 dimensões nas camadas largas) cujo alvo é a
-\emph{decisão da rede} $\hat y$, e não o rótulo. A sonda responde: ``se a rede parasse no bloco $b$, o que diria?''. Para uma imagem de
-teste, seja $c_b(x) = g_b(\hat y(x) \mid a_b(x))$ a probabilidade de o bloco $b$ já dar a resposta final e
-$s_b(x) = \mathbf{1}[\arg\max g_b(a_b(x)) = \hat y(x)]$ a sua concordância. Calculamos
+\textit{Como a rede classifica, bloco a bloco.}
+Uma rede profunda não decide de uma vez: ela transforma a entrada em uma sequência de representações cada vez mais abstratas. Formalmente,
+$f$ é a composição de $B$ blocos seguida de uma cabeça de classificação,
 \begin{align}
-  \textit{trocas} &= \textstyle\sum_{b=2}^{B} |s_b - s_{b-1}|, \\
-  \textit{profundidade da decisão} &= \tfrac{1}{B}\max\{b : s_b = 0\}, \\
-  \textit{entropia das sondas} &= \tfrac{1}{B}\textstyle\sum_{b} H\big(g_b(a_b)\big)/\log K, \\
-  \textit{concordância final} &= \tfrac{1}{|L|}\textstyle\sum_{b \in L} c_b, \\
-  \textit{salto final} &= |p(x) - c_B(x)|,
+  f &= h \circ \phi_B \circ \cdots \circ \phi_2 \circ \phi_1, \nonumber\\
+  \mathbf{Z}_b(x) &= \phi_b\big(\mathbf{Z}_{b-1}(x)\big), \qquad \mathbf{Z}_0(x) = x,
+  \label{eq:blocos}
 \end{align}
-em que $L$ contém os últimos $\lfloor B/3 \rfloor$ blocos; a profundidade da decisão é zero quando todos os blocos concordam com $\hat y$ e
-segue a profundidade de predição de Baldock et al.~\cite{baldock2021}.
+em que $\mathbf{Z}_b(x) \in \mathbb{R}^{C_b \times H_b \times W_b}$ é o mapa de ativações do bloco $b$, com $C_b$ canais sobre uma grade
+espacial $H_b \times W_b$. Os primeiros blocos respondem a bordas, cores e texturas; os intermediários, a padrões; os finais, ao objeto
+inteiro. Só a cabeça $h$ transforma a última representação em resposta: no caso binário, $p(x) = \sigma\big(h(\mathbf{Z}_B(x))\big)$, com
+$\sigma(t) = 1/(1+e^{-t})$. A Fig.~\ref{fig:blocos} ilustra esse percurso. Na EfficientNet-B0 lemos $B=18$ sub-blocos; na ResNet-32, $B=16$.
+
+\begin{figure*}[t]
+\centering
+\IfFileExists{figuras/blocos.png}{\includegraphics[width=\textwidth]{figuras/blocos.png}}{\fbox{\parbox[c][4.5cm][c]{0.95\textwidth}{\centering
+\textcolor{gray}{Espaço reservado para a figura: a imagem passa pelos blocos $\phi_1,\dots,\phi_B$; abaixo de cada bloco, a sonda $g_b$ e
+a sua opinião parcial $c_b(x)$. (salvar como figuras/blocos.png)}}}}
+\caption{A imagem atravessa os blocos da rede. Em cada bloco, uma sonda lê a representação $\mathbf{a}_b(x)$ e responde o que a rede diria
+se parasse ali; a sequência dessas respostas forma o caminho da decisão.}
+\label{fig:blocos}
+\end{figure*}
+
+\textit{Uma sigmoide em cada bloco.}
+Para saber o que a rede ``pensa'' no meio do caminho, colocamos em cada bloco uma sonda linear~\cite{alain2016}. A leitura de um bloco segue
+quatro passos.
+
+\emph{Passo 1 (resumo espacial).} O mapa $\mathbf{Z}_b(x)$ é reduzido a um vetor pela média em todas as posições:
+\begin{equation}
+  \mathbf{a}_b(x) = \frac{1}{H_b W_b} \sum_{u=1}^{H_b}\sum_{v=1}^{W_b} \mathbf{Z}_b(x)_{:,u,v} \in \mathbb{R}^{C_b}.
+\end{equation}
+Cada coordenada diz o quanto um detector do bloco foi ativado na imagem como um todo.
+
+\emph{Passo 2 (padronização).} Com a média $\mathbf{m}_b$ e o desvio $\mathbf{d}_b$ de cada canal, estimados num conjunto $\mathcal{R}$ de
+imagens de referência do treino, e uma projeção $\mathbf{U}_b$ nas 256 componentes principais quando $C_b > 256$,
+\begin{equation}
+  \tilde{\mathbf{a}}_b(x) = \mathbf{U}_b^{\top}\,\mathrm{diag}(\mathbf{d}_b)^{-1}\big(\mathbf{a}_b(x) - \mathbf{m}_b\big).
+\end{equation}
+
+\emph{Passo 3 (a sigmoide do bloco).} A sonda é uma regressão logística sobre $\tilde{\mathbf{a}}_b$. No caso binário,
+\begin{equation}
+  t_b(x) = \mathbf{w}_b^{\top}\tilde{\mathbf{a}}_b(x) + \beta_b, \qquad c_b(x) = \sigma\big(t_b(x)\big),
+  \label{eq:sonda}
+\end{equation}
+e, com $K$ classes, a sigmoide dá lugar ao softmax,
+$g_{b,k}(x) = e^{t_{b,k}(x)}/\sum_{k'} e^{t_{b,k'}(x)}$, com $c_b(x) = g_{b,\hat y(x)}(x)$. Cada bloco tem, portanto, a sua própria curva
+sigmoide, com pesos $\mathbf{w}_b$ e viés $\beta_b$ próprios (Fig.~\ref{fig:sigmoide}a): $t_b$ mede de que lado da fronteira o bloco $b$
+coloca a imagem, e $c_b \in (0,1)$ é a probabilidade de esse bloco já dar a resposta final da rede.
+
+\emph{Passo 4 (treino das sondas).} O alvo da sonda é a \emph{decisão da rede} $\hat y$, e não o rótulo verdadeiro, porque queremos medir
+quando a rede se decide, e não se ela acerta:
+\begin{align}
+  (\mathbf{w}_b, \beta_b) &= \arg\min_{\mathbf{w},\beta}\; \mathcal{J}_b(\mathbf{w},\beta), \label{eq:treino_sonda}\\
+  \mathcal{J}_b(\mathbf{w},\beta) &= \sum_{x \in \mathcal{R}} \omega_{\hat y(x)}\,
+     \ell\big(\hat y(x),\, \sigma(\mathbf{w}^{\top}\tilde{\mathbf{a}}_b(x) + \beta)\big) \nonumber\\
+     &\quad + \tfrac{1}{2\lambda}\lVert \mathbf{w} \rVert_2^2, \nonumber
+\end{align}
+em que $\ell$ é a entropia cruzada, $\omega_k$ equilibra as classes e $\lambda = 0{,}1$ controla a regularização. A rede não é alterada:
+as sondas apenas observam.
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}
+\begin{axis}[width=\columnwidth, height=3.6cm, xmin=-6, xmax=6, ymin=0, ymax=1, xlabel={$t_b(x)$}, ylabel={$c_b(x)=\sigma(t_b)$},
+  ylabel style={font=\scriptsize}, xlabel style={font=\scriptsize}, tick label style={font=\scriptsize}, title={(a) uma sigmoide por bloco},
+  title style={font=\scriptsize}, ytick={0,0.5,1}, grid=none]
+  \addplot[thick, gray, domain=-6:6, samples=100] {1/(1+exp(-x))};
+  \addplot[dashed, black!50, domain=-6:6] {0.5};
+  \addplot[only marks, mark=*, mark size=1.6pt, blue!70!black] coordinates {(-1.2,0.231) (0.4,0.599) (-0.6,0.354) (1.1,0.750) (2.2,0.900) (3.4,0.968)};
+  \node[font=\tiny, anchor=south east] at (axis cs:-1.2,0.25) {$b{=}1$};
+  \node[font=\tiny, anchor=north west] at (axis cs:-0.6,0.33) {$b{=}6$};
+  \node[font=\tiny, anchor=south east] at (axis cs:3.4,0.97) {$b{=}18$};
+\end{axis}
+\end{tikzpicture}
+
+\vspace{2pt}
+\begin{tikzpicture}
+\begin{axis}[width=\columnwidth, height=3.6cm, xmin=1, xmax=18, ymin=0, ymax=1, xlabel={bloco $b$}, ylabel={$c_b(x)$},
+  ylabel style={font=\scriptsize}, xlabel style={font=\scriptsize}, tick label style={font=\scriptsize}, title={(b) o caminho da decisão},
+  title style={font=\scriptsize}, ytick={0,0.5,1}, xtick={1,6,12,18}, legend style={font=\tiny, at={(0.02,0.02)}, anchor=south west, draw=none, fill=none}]
+  \addplot[dashed, black!50, domain=1:18, forget plot] {0.5};
+  \addplot[thick, blue!70!black, mark=*, mark size=0.8pt] coordinates {(1,0.52) (2,0.55) (3,0.58) (4,0.62) (5,0.66) (6,0.70) (7,0.73) (8,0.76) (9,0.79) (10,0.82) (11,0.84) (12,0.86) (13,0.88) (14,0.90) (15,0.92) (16,0.94) (17,0.95) (18,0.96)};
+  \addlegendentry{acerto: decide cedo e mantém}
+  \addplot[thick, red!70!black, mark=*, mark size=0.8pt] coordinates {(1,0.45) (2,0.38) (3,0.42) (4,0.55) (5,0.62) (6,0.48) (7,0.35) (8,0.40) (9,0.58) (10,0.66) (11,0.52) (12,0.44) (13,0.60) (14,0.78) (15,0.88) (16,0.94) (17,0.96) (18,0.97)};
+  \addlegendentry{alucinação: hesita e só decide no fim}
+\end{axis}
+\end{tikzpicture}
+\caption{(a) Cada bloco $b$ tem a sua sigmoide (Eq.~\ref{eq:sonda}); os pontos mostram onde uma mesma imagem cai em alguns blocos.
+(b) Ligando as respostas de todos os blocos, obtemos o caminho da decisão. Valores ilustrativos.}
+\label{fig:sigmoide}
+\end{figure}
+
+\textit{Do caminho às características.}
+Para cada imagem, as $B$ sigmoides produzem o caminho $\mathbf{c}(x) = \big(c_1(x), \dots, c_B(x)\big) \in [0,1]^B$, em que a posição
+$b/B$ é a profundidade relativa. Seja $s_b(x) = \mathbf{1}\big[\arg\max_k g_{b,k}(x) = \hat y(x)\big]$ o indicador de que o bloco $b$ já
+concorda com a resposta final (no caso binário, $s_b = \mathbf{1}[c_b > 1/2]$). Resumimos o caminho por cinco funcionais, cada um ligado
+a um comportamento da rede:
+\begin{align}
+  \mathrm{TV}(x) &= \sum_{b=2}^{B} \big| s_b(x) - s_{b-1}(x) \big| \nonumber\\
+     &= \sum_{b=2}^{B} \mathbf{1}\big[(c_b - \tfrac12)(c_{b-1} - \tfrac12) < 0\big], \label{eq:tv}\\
+  D(x) &= \frac{1}{B}\,\max\big(\{0\} \cup \{\, b : s_b(x) = 0 \,\}\big), \label{eq:prof}\\
+  \bar H(x) &= \frac{1}{B\log K} \sum_{b=1}^{B} \Big( -\sum_{k=1}^{K} g_{b,k}(x)\log g_{b,k}(x) \Big), \label{eq:ent}\\
+  A(x) &= \frac{1}{|\mathcal{L}|} \sum_{b \in \mathcal{L}} c_b(x), \label{eq:conc}\\
+  J(x) &= \big|\, p_{\hat y}(x) - c_B(x) \,\big|. \label{eq:salto}
+\end{align}
+A \emph{variação total} $\mathrm{TV}$ (Eq.~\ref{eq:tv}) conta quantas vezes o caminho cruza a fronteira $c_b = 1/2$, isto é, quantas vezes
+a rede muda de opinião; no binário, a segunda forma deixa isso explícito. A \emph{profundidade da decisão} $D$ (Eq.~\ref{eq:prof}) é a
+fração da rede percorrida até o último bloco que ainda discordava; vale 0 quando todos os blocos concordam e segue a profundidade de
+predição de Baldock et al.~\cite{baldock2021}. A \emph{entropia média das sondas} $\bar H$ (Eq.~\ref{eq:ent}), normalizada para $[0,1]$,
+mede o quanto os blocos ficaram indecisos ao longo do caminho, mesmo sem cruzar a fronteira. A \emph{concordância final} $A$
+(Eq.~\ref{eq:conc}) é a média do último terço do caminho, $\mathcal{L} = \{B - \lfloor B/3 \rfloor + 1, \dots, B\}$: se a rede responde com confiança mas o fim do caminho não concorda, há algo
+errado. Por fim, o \emph{salto final} $J$ (Eq.~\ref{eq:salto}) compara a confiança da cabeça, $p_{\hat y}$, com a do último bloco; um salto
+grande indica que a certeza apareceu só na cabeça. Na Fig.~\ref{fig:sigmoide}b, a alucinação tem $\mathrm{TV}=5$ e $D=12/18$, enquanto o acerto tem
+$\mathrm{TV}=0$ e $D=0$; as duas terminam com $A$ e $p$ altos, e é só o caminho que revela a hesitação.
 
 \textit{Estabilidade.}
-Cada imagem também passa por $V-1$ transformações que preservam o rótulo (espelhamentos e rotação de 180$^\circ$ em imagens sem orientação,
-como lesões de pele; espelhamento horizontal e deslocamentos de 2 pixels no CIFAR; só pequenos deslocamentos no SVHN e no MNIST, em que
-espelhar muda o dígito). Registramos a fração de vistas cuja decisão difere de $\hat y$ (\textit{vistas que mudam}), o desvio padrão da
-confiança em $\hat y$ entre as vistas (\textit{desvio entre vistas}) e o desvio padrão do caminho $(c_1,\dots,c_B)$ entre as vistas, com
-média sobre os blocos (\textit{desvio do caminho}).
+Sejam $T_1 = \mathrm{id}, T_2, \dots, T_V$ transformações que preservam o rótulo (espelhamentos e rotação de 180$^\circ$ em imagens sem
+orientação, como lesões de pele; espelhamento horizontal e deslocamentos de 2 pixels no CIFAR; só pequenos deslocamentos no SVHN e no MNIST,
+em que espelhar muda o dígito). Medimos o quanto a resposta e o caminho mudam entre essas vistas:
+\begin{align}
+  \Delta_V(x) &= \frac{1}{V-1}\sum_{v=2}^{V} \mathbf{1}\big[\hat y(T_v x) \ne \hat y(x)\big], \\
+  \sigma_V(x) &= \operatorname{std}_{v}\; p_{\hat y(x)}(T_v x), \\
+  \sigma_{\mathbf c}(x) &= \frac{1}{B}\sum_{b=1}^{B} \operatorname{std}_{v}\; c_b(T_v x).
+\end{align}
 
 \textit{Familiaridade.}
-Na penúltima camada, buscamos as $k=15$ imagens de referência mais próximas (cosseno) e registramos a fração cuja decisão difere de $\hat y$
-(\textit{discordância dos vizinhos}) e a distância média a elas, dividida pela distância mediana entre as imagens de referência
-(\textit{distância aos vizinhos}).
+Seja $\mathbf{e}(x)$ a representação da penúltima camada, centrada e normalizada, e $\mathcal{N}_k(x)$ as $k=15$ imagens de referência com
+maior similaridade de cosseno $\langle \mathbf{e}(x), \mathbf{e}(x') \rangle$. Medimos se os vizinhos receberam outra resposta e o quanto
+estão longe, em relação à distância típica $\bar\delta$ (a mediana da mesma medida entre as próprias imagens de referência):
+\begin{align}
+  \nu(x) &= \frac{1}{k}\sum_{x' \in \mathcal{N}_k(x)} \mathbf{1}\big[\hat y(x') \ne \hat y(x)\big], \\
+  \delta(x) &= \frac{1}{k\,\bar\delta}\sum_{x' \in \mathcal{N}_k(x)} \big(1 - \langle \mathbf{e}(x), \mathbf{e}(x') \rangle\big).
+\end{align}
 
-Com o próprio $p$, são onze características. As três de estabilidade exigem $V$ passagens pela rede; as outras, uma.
+Com o próprio $p$, são onze características: $p$, $\mathrm{TV}$, $D$, $\bar H$, $A$, $J$, $\Delta_V$, $\sigma_V$, $\sigma_{\mathbf c}$,
+$\nu$ e $\delta$. As três de estabilidade exigem $V$ passagens pela rede; as outras, uma.
 
 \subsection{Etapa 2: fuzzificação}
 Cada característica escolhida $x_j$ é descrita por três termos linguísticos, \term{baixo}, \term{médio} e \term{alto}, com funções de
