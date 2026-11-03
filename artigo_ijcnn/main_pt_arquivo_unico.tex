@@ -440,8 +440,63 @@ estão longe, em relação à distância típica $\bar\delta$ (a mediana da mesm
   \delta(x) &= \frac{1}{k\,\bar\delta}\sum_{x' \in \mathcal{N}_k(x)} \big(1 - \langle \mathbf{e}(x), \mathbf{e}(x') \rangle\big).
 \end{align}
 
-Com o próprio $p$, são onze características: $p$, $\mathrm{TV}$, $D$, $\bar H$, $A$, $J$, $\Delta_V$, $\sigma_V$, $\sigma_{\mathbf c}$,
+Com o próprio $p$, são onze características candidatas: $p$, $\mathrm{TV}$, $D$, $\bar H$, $A$, $J$, $\Delta_V$, $\sigma_V$, $\sigma_{\mathbf c}$,
 $\nu$ e $\delta$. As três de estabilidade exigem $V$ passagens pela rede; as outras, uma.
+
+\emph{Seleção das características.} Testamos as onze, mas o sistema usa apenas quatro: $p$ e mais três.
+O motivo é a redundância. Várias candidatas medem quase a mesma coisa: $\mathrm{TV}$ e $D$ contam,
+de formas diferentes, a mesma hesitação ao longo dos blocos; $\bar H$ e $\sigma_{\mathbf c}$ sobem juntas;
+$J$ e $A$ acompanham de perto a própria confiança $p$. Nos nossos experimentos, essas correlações de
+postos chegaram a $|\rho| \approx 0{,}9$ ou mais (Tabela~\ref{tab:features}). Colocar características redundantes
+no mesmo modelo não traz informação nova, só dobra o número de regras e torna os pesos instáveis
+e difíceis de interpretar.
+
+A escolha é feita em dois passos, apenas nos dados de treino de cada dobra. Primeiro, medimos o que
+cada característica $f$ acrescenta \emph{além de} $p$: dividimos as imagens em cinco faixas $q$ de $p$ parecido
+(quintis) e calculamos a AUROC de $f$ dentro de cada faixa,
+\begin{equation}
+  \mathcal{U}_{|p}(f) = \sum_{q=1}^{5} \frac{n_q}{n}\,\max\!\big(\mathcal{U}_q(f),\, 1 - \mathcal{U}_q(f)\big),
+  \label{eq:auroc_alem}
+\end{equation}
+em que $\mathcal{U}_q(f)$ é a AUROC de $f$ na faixa $q$ e $n_q$ o número de imagens nela. Dentro de uma faixa, todas
+as imagens têm quase a mesma confiança; assim, uma característica que só repete $p$ fica com $\mathcal{U}_{|p} \approx 0{,}5$.
+Segundo, partimos de $\mathcal{S} = \{p\}$ e percorremos as candidatas em ordem decrescente de
+$\mathcal{U}_{|p}$, aceitando $f$ somente se
+\begin{equation}
+  |\rho_{\mathrm{S}}(f, g)| < 0{,}85 \quad \text{para toda } g \in \mathcal{S} \setminus \{p\},
+  \label{eq:selecao}
+\end{equation}
+em que $\rho_{\mathrm{S}}$ é a correlação de Spearman, até que $|\mathcal{S}| = 4$. Ficamos em quatro porque,
+com três termos por característica, já são doze regras: o bastante para cobrir as três famílias de sinais
+(caminho, estabilidade e familiaridade) e ainda pouco para que cada regra seja lida e conferida à mão.
+A escolha é refeita em cada dobra de treino. Também relatamos uma variante sem as características de estabilidade,
+que exige uma única passagem pela rede.
+
+\begin{table}[t]
+\centering
+\caption{As onze características candidatas. $|\rho_p|$: mediana da correlação de Spearman com $p$;
+Esc.: porcentagem dos 260 ajustes (26 execuções $\times$ 10 dobras) em que a característica foi escolhida.}
+\label{tab:features}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}llp{3.1cm}rr@{}}
+\toprule
+ & Grupo & O que mede & $|\rho_p|$ & Esc. \\
+\midrule
+$p$ & resposta & confiança final da rede & 1,00 & 100\% \\
+$\sigma_V$ & estabilidade & variação de $p$ entre vistas & 0,82 & 69\% \\
+$A$ & caminho & confiança no último terço & 0,78 & 44\% \\
+$\sigma_{\mathbf c}$ & estabilidade & variação do caminho entre vistas & 0,52 & 40\% \\
+$\delta$ & familiaridade & distância aos vizinhos & 0,64 & 34\% \\
+$J$ & caminho & salto do último bloco à saída & 0,88 & 28\% \\
+$\bar H$ & caminho & indecisão média das sondas & 0,63 & 13\% \\
+$D$ & caminho & bloco em que a decisão firmou & 0,40 & 12\% \\
+$\nu$ & familiaridade & vizinhos com outra resposta & 0,35 & 9\% \\
+$\Delta_V$ & estabilidade & vistas com outra resposta & 0,39 & 2\% \\
+$\mathrm{TV}$ & caminho & trocas de opinião & 0,22 & 0\% \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \subsection{Etapa 2: fuzzificação}
 Cada característica escolhida $x_j$ é descrita por três termos linguísticos, \term{baixo}, \term{médio} e \term{alto}, com funções de
@@ -464,15 +519,6 @@ regras de maior contribuição $w_{jk}\mu_{jk}(x_j)$.
 
 Escolhemos regras de um único antecedente por dois motivos. Primeiro, cada regra pode ser lida sozinha, sem combinar condições. Segundo,
 o número de regras cresce linearmente com o número de características, o que deixa os pesos estáveis mesmo com poucos exemplos de erro.
-Em testes preliminares, bases com regras de vários antecedentes, aprendidas pelo método de Wang--Mendel~\cite{wangmendel1992}, tiveram
-desempenho menos consistente.
-
-\subsection{Escolha das características}
-Incluímos sempre $p$ e acrescentamos as $d-1=3$ características com maior \emph{AUROC além de $P$}: a AUROC para detectar alucinações
-calculada dentro de cinco faixas de quantis de $p$ e ponderada pelo tamanho das faixas. Ela mede o que a característica acrescenta entre
-imagens em que a rede tem confiança parecida. Uma candidata é descartada se sua correlação de Spearman, em valor absoluto, com outra já
-escolhida for de pelo menos 0,85. A escolha é refeita em cada partição de treino. Também relatamos uma variante sem as características
-de estabilidade, que exige uma única passagem pela rede.
 
 % =====================================================================
 \section{Configuração Experimental}
