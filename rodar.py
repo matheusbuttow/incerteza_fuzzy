@@ -181,7 +181,20 @@ if __name__ == "__main__":
     print(f"Dispositivo: {disp}" + ("" if disp == "cuda" else "  (sem GPU: só faz sentido com --teste-rapido)"))
     if disp == "cuda":
         torch.backends.cudnn.benchmark = True
+    falhas = []
     for exp in a.exp or C.EXPERIMENTOS_PADRAO:
         for s in a.sementes or C.EXPERIMENTOS[exp].get("sementes", C.SEMENTES):
-            rodar_um(exp, s, disp, a.refazer)
+            try:
+                rodar_um(exp, s, disp, a.refazer)
+            except KeyboardInterrupt:
+                raise
+            except Exception as err:                 # ex.: servidor de um dataset fora do ar — pula e segue com os outros
+                import traceback
+                traceback.print_exc()
+                print(f"\n*** FALHOU: {exp} semente {s}: {err} — seguindo com os próximos ***\n", flush=True)
+                falhas.append(f"{exp} semente {s}: {err}")
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+    if falhas:
+        print("\nRodadas que falharam (rode de novo só elas depois, com --exp):\n  " + "\n  ".join(falhas))
     print("\nTudo pronto. Agora rode:  python relatorio.py")
