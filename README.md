@@ -1,6 +1,6 @@
 # Incerteza da rede lida por dentro + regras fuzzy
 
-Código completo do trabalho: treina as redes, lê cada rede por dentro, compara o nosso método (Wang-Mendel e fuzzy aditivo) com todos os métodos de outros artigos nas **mesmas imagens**, e gera planilha, gráficos e uma página HTML para analisar.
+Código completo do trabalho: treina as redes, lê cada rede por dentro, compara o nosso método (fuzzy aditivo; o Wang-Mendel roda só para consulta interna, fora do artigo) com todos os métodos de outros artigos nas **mesmas imagens**, e gera planilha, gráficos e uma página HTML para analisar.
 
 ## 1. Instalar
 
@@ -51,7 +51,7 @@ No fim, mande `resultados/relatorio.xlsx` e `resultados_tipo2/resultados_tipo2.x
 Ou por partes:
 
 ```bash
-python rodar.py                 # tudo: 7 experimentos × 3 sementes
+python rodar.py                 # tudo: 8 experimentos (3 sementes; ham10000_todas com 5)
 python relatorio.py             # junta tudo em resultados/relatorio.html e relatorio.xlsx
 ```
 
@@ -78,7 +78,7 @@ Outras opções: `--sementes 42 7` (escolher sementes) e `--refazer avaliacao` (
 | svhn | CNN pequena, 30 épocas | ~15 min | ~30 min |
 | mnist | MLP, 20 épocas | ~5 min | ~10 min |
 
-Tudo (7 × 3 sementes): cerca de 10 h numa GPU boa. Para acelerar, diminua `EPOCAS` em `config.py` ou rode menos sementes primeiro.
+Tudo (8 experimentos, 26 rodadas): cerca de 15 h numa GPU boa, mais umas 2–4 h do tipo 2 (`rodar_tudo.sh`). Para acelerar, diminua `EPOCAS` em `config.py` ou rode menos sementes primeiro.
 
 ## 5. O que sai
 
@@ -124,7 +124,7 @@ Todos os métodos usam a **mesma rede congelada** e as **mesmas imagens de teste
 | Vizinhos em cada camada | Font et al. 2025 | sim |
 | SVM na penúltima camada | Gorbett & Blanchard 2022 | sim |
 | ConfidNet | Corbière et al. 2019 | sim |
-| **NOSSO: Wang-Mendel** (P + 2 features internas) | proposto | sim |
+| NOSSO: Wang-Mendel (P + 2 features internas) | só consulta interna (fora do artigo e das tabelas LaTeX) | sim |
 | **NOSSO: Fuzzy aditivo** (P + 3 features internas) | proposto | sim |
 | **NOSSO: Fuzzy aditivo (sem vistas)** — uma passagem pela rede | proposto | sim |
 | Barna et al. 2026 — possibilidade de erro sobre o softmax | Applied Sciences 2026 | não |
@@ -182,7 +182,7 @@ Experimentos (cada um reproduz o cenário de um artigo):
 | `mostrar_pertinencias.py` | (`--todos` para todos os experimentos) desenha as funções de pertinência do fuzzy aditivo final, o peso de cada regra e os pontos de risco por valor (pertinencias.png) |
 | `tabelas_latex.py` | gera as tabelas do artigo em LaTeX para o Overleaf (tabelas_pt.tex e tabelas_en.tex) a partir do relatorio.xlsx |
 
-## 6. Experimentos extras (`experimentos/`)
+## 9. Experimentos extras (`experimentos/`)
 
 Pasta separada, com notebook Jupyter **e** script Python para cada experimento:
 

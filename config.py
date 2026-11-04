@@ -26,8 +26,8 @@ SEMENTES = [42, 7, 2026]                               # cada semente: novo sort
 EXPERIMENTOS_PADRAO = ["ham10000", "ham10000_todas", "cifar10", "cifar10_ruido30", "cifar10_vgg16", "cifar100_vgg16", "svhn", "mnist"]
 
 EXPERIMENTOS = {
-    "ham10000":        dict(dados="ham10000", arq="effnet_b0", ruido=0.0, artigo="Seu trabalho (BRACIS 2025)"),
-    "ham10000_todas":  dict(dados="ham10000", arq="effnet_b0", ruido=0.0, artigo="Seu trabalho (BRACIS 2025)",
+    "ham10000":        dict(dados="ham10000", arq="effnet_b0", ruido=0.0, artigo="HAM10000 (mesma configuração do seu BRACIS 2025)"),
+    "ham10000_todas":  dict(dados="ham10000", arq="effnet_b0", ruido=0.0, artigo="HAM10000 (mesma configuração do seu BRACIS 2025)",
                             n_lesoes=None, sementes=[42, 7, 2026, 1, 123]),   # todas as lesões, 5 sementes
     "cifar10":         dict(dados="cifar10",  arq="resnet32",  ruido=0.0, artigo="Chen et al. 2019"),
     "cifar10_ruido30": dict(dados="cifar10",  arq="resnet32",  ruido=0.3, artigo="Chen et al. 2019"),

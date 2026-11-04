@@ -75,7 +75,7 @@ Experimentos:
 | E6 | Árvore fuzzy | Fuzzy ID3, profundidade 2 | n/a | regras de 2 condições | `regras_fuzzy.py: ArvoreFuzzy` | conferido |
 | E7 | Wang-Mendel | Roda, mas **fica fora do artigo e das tabelas principais** (abas `interno_*`) | n/a | decisão do autor | `fuzzy_t2.py: WangMendel` | conferido |
 | E8 | Tipo 2 (`ham_tipo2`) | Termo = envelope (mín, máx) das curvas de cada rede de origem; nota pontual com as pertinências do meio da faixa; intervalo **exato** no fuzzy aditivo (nota linear nas pertinências) | n/a | a faixa representa a discordância entre redes | `fuzzy_t2.py: pert_t2, FuzzyAditivo.nota_t2` | conferido (testado contra força bruta) |
-| E9 | Deixa uma arquitetura de fora | Aprende nas outras redes (metade 1 do teste) e avalia na rede de fora (metade 2), e troca; limiar das zonas escolhido nas redes de origem (20% acima) | n/a | testar se as regras se transferem | `fuzzy_t2.py: deixa_uma_fora` | conferido |
+| E9 | Deixa uma arquitetura de fora | Aprende nas outras redes (metade 1 do teste) e avalia na rede de fora (metade 2), e troca; zonas com dois limiares escolhidos nas redes de origem, com garantia de 95% (Clopper–Pearson): seguro = erro ≤ 5%, alarme = erro ≥ 50%; tipo 1 e tipo 2 lado a lado | n/a | testar se as regras se transferem | `fuzzy_t2.py: deixa_uma_fora` | conferido |
 
 ### E10–E13. Métodos fuzzy de outros autores (pipeline principal, `fuzzy_outros.py`)
 
