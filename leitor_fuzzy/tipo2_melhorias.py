@@ -27,21 +27,30 @@ VISTAS = {"desloca 1px": [lambda x: torch.roll(x, (1, 1), (-2, -1))],
           "giro 10°": [lambda x: TF.rotate(x, 10.0)]}
 
 
-def limiar_seguro(s_sup, y):
-    """Maior t tal que, entre as imagens com s_sup < t, a taxa de erro fica ≤ META_SEGURO."""
-    o = np.argsort(s_sup); taxa = np.cumsum(y[o]) / np.arange(1, len(y) + 1)
-    ok = np.where(taxa <= META_SEGURO)[0]
+def _taxa(erros, n, garantia, lado):
+    """Taxa de erro observada, ou o limite de Clopper–Pearson (95%) quando garantia=True:
+    'sup' para o seguro (pior caso = mais erro), 'inf' para o alarme (pior caso = menos erro)."""
+    if not garantia:
+        return erros / n
+    from scipy.stats import beta
+    return beta.ppf(0.95, erros + 1, n - erros) if lado == "sup" else beta.ppf(0.05, np.maximum(erros, 1e-9), n - erros + 1)
+
+
+def limiar_seguro(s_sup, y, garantia=False):
+    """Maior t tal que, entre as imagens com s_sup < t, a taxa de erro (ou o seu limite superior) fica ≤ META_SEGURO."""
+    o = np.argsort(s_sup); n = np.arange(1, len(y) + 1)
+    ok = np.where(_taxa(np.cumsum(y[o]), n, garantia, "sup") <= META_SEGURO)[0]
     return s_sup[o][ok[-1]] if len(ok) else -np.inf
 
 
-def limiar_alarme(s_inf, y):
-    """Menor t tal que, entre as imagens com s_inf > t, a taxa de erro fica ≥ META_ALARME."""
-    o = np.argsort(-s_inf); taxa = np.cumsum(y[o]) / np.arange(1, len(y) + 1)
-    ok = np.where(taxa >= META_ALARME)[0]
+def limiar_alarme(s_inf, y, garantia=False):
+    """Menor t tal que, entre as imagens com s_inf > t, a taxa de erro (ou o seu limite inferior) fica ≥ META_ALARME."""
+    o = np.argsort(-s_inf); n = np.arange(1, len(y) + 1)
+    ok = np.where(_taxa(np.cumsum(y[o]), n, garantia, "inf") >= META_ALARME)[0]
     return s_inf[o][ok[-1]] if len(ok) else np.inf
 
 
-def avaliar(tabs, cand, k):
+def avaliar(tabs, cand, k, garantia=False):
     lin = []
     for alvo in tabs:
         fontes = [s for s in tabs if s != alvo]
@@ -51,7 +60,7 @@ def avaliar(tabs, cand, k):
         Mi, Ms = t2.pert_t2(src[feats].values, lista_C)
         m = t2.FuzzyAditivo().fit((Mi + Ms) / 2, src.erro.values, feats, src._g.values)
         si_src, ss_src, _ = m.nota_t2(Mi, Ms)
-        ts, ta = limiar_seguro(ss_src, src.erro.values), limiar_alarme(si_src, src.erro.values)
+        ts, ta = limiar_seguro(ss_src, src.erro.values, garantia), limiar_alarme(si_src, src.erro.values, garantia)
         T = tabs[alvo]; y = T.erro.values
         si, ss, sm = m.nota_t2(*t2.pert_t2(T[feats].values, lista_C))
         seg, al = ss < ts, (si > ta) & ~(ss < ts); inc = ~seg & ~al
