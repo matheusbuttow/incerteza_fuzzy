@@ -1,6 +1,7 @@
 """
-fuzzy.py — o sistema fuzzy aditivo (TSK de ordem zero com regras de um antecedente) e a seleção de características.
-Mesma lógica de ../fuzzy.py do artigo, só o necessário para a biblioteca.
+fuzzy.py — o sistema fuzzy aditivo (TSK de ordem zero com regras de um antecedente), tipo 1 e tipo 2,
+a seleção de características e os limiares das três zonas. Mesma lógica de ../fuzzy.py e de
+../experimentos/ham_tipo2/fuzzy_t2.py, só o necessário para a biblioteca.
 """
 import numpy as np
 from scipy.stats import spearmanr
@@ -38,7 +39,7 @@ class Particoes:
 
 
 class FuzzyAditivo:
-    """r(x) = σ(b + Σ_j Σ_k w_jk μ_jk(x_j)): uma regra 'SE x_j é TERMO' por par (característica, termo)."""
+    """Tipo 1. r(x) = σ(b + Σ_j Σ_k w_jk μ_jk(x_j)): uma regra 'SE x_j é TERMO' por par (característica, termo)."""
     def __init__(self, fixos=None, C=1.0):
         self.fixos, self.C = fixos, C
 
@@ -50,6 +51,10 @@ class FuzzyAditivo:
     def risco(self, X):
         return self.lr.predict_proba(np.hstack(self.part.pertinencias(X)))[:, 1]
 
+    def intervalo(self, X):
+        s = self.risco(X)
+        return s, s, s
+
     def contribuicoes(self, X):
         """(n, d, 3): w_jk μ_jk(x_j) de cada regra para cada exemplo."""
         M = np.stack(self.part.pertinencias(X), 1)
@@ -58,6 +63,78 @@ class FuzzyAditivo:
     def regras(self):
         w = self.lr.coef_[0]
         return [(f"SE {n} é {TERMOS[k]}", float(w[3 * j + k])) for j, n in enumerate(self.nomes) for k in range(3)]
+
+
+class FuzzyAditivo2:
+    """Tipo 2 intervalar. Cada termo tem uma FAIXA de picos em vez de um pico só: os picos (quantis 5/50/95%)
+    são recalculados em `n_boot` reamostragens da calibração, e a pertinência vira o intervalo
+    [mínimo, máximo] entre elas. Os pesos são aprendidos no meio da faixa. Como a nota é linear nas
+    pertinências, o intervalo da saída sai exato:
+        z_inf = b + Σ (w>0 ? w·μ_inf : w·μ_sup),   z_sup = b + Σ (w>0 ? w·μ_sup : w·μ_inf)."""
+    def __init__(self, fixos=None, C=1.0, n_boot=10, semente=0):
+        self.fixos, self.C, self.n_boot, self.semente = fixos, C, n_boot, semente
+
+    def _envelope(self, X):
+        Ms = np.stack([np.stack(p.pertinencias(X), 1) for p in self.parts])        # (B, n, d, 3)
+        return Ms.min(0), Ms.max(0)
+
+    def fit(self, X, y, nomes):
+        X = np.asarray(X, float); self.nomes = list(nomes); r = np.random.default_rng(self.semente)
+        self.part = Particoes(self.fixos).fit(X, nomes)                              # picos com todos os dados
+        self.parts = [self.part] + [Particoes(self.fixos).fit(X[r.integers(0, len(X), len(X))], nomes)
+                                    for _ in range(self.n_boot)]
+        lo, hi = self._envelope(X)
+        self.lr = LogisticRegression(C=self.C, max_iter=3000).fit(((lo + hi) / 2).reshape(len(X), -1), y)
+        self.w, self.b = self.lr.coef_[0], self.lr.intercept_[0]
+        return self
+
+    def intervalo(self, X):
+        """(nota inferior, nota superior, nota pontual) de cada exemplo."""
+        lo, hi = self._envelope(np.asarray(X, float)); n = len(lo)
+        lo, hi = lo.reshape(n, -1), hi.reshape(n, -1); pos = self.w > 0
+        sig = lambda z: 1 / (1 + np.exp(-z))
+        s_i = sig(lo[:, pos] @ self.w[pos] + hi[:, ~pos] @ self.w[~pos] + self.b)
+        s_s = sig(hi[:, pos] @ self.w[pos] + lo[:, ~pos] @ self.w[~pos] + self.b)
+        return s_i, s_s, np.clip(sig(((lo + hi) / 2) @ self.w + self.b), s_i, s_s)
+
+    def risco(self, X):
+        return self.intervalo(X)[2]
+
+    def contribuicoes(self, X):
+        lo, hi = self._envelope(np.asarray(X, float))
+        return (lo + hi) / 2 * self.w.reshape(len(self.nomes), 3)[None]
+
+    def regras(self):
+        return [(f"SE {n} é {TERMOS[k]}", float(self.w[3 * j + k])) for j, n in enumerate(self.nomes) for k in range(3)]
+
+
+# ----------------------------------------------------------------------------- três zonas
+def _taxa(erros, n, garantia, lado):
+    """Taxa de erro observada, ou o limite de Clopper–Pearson (95%) quando garantia=True."""
+    if not garantia:
+        return erros / n
+    from scipy.stats import beta
+    return beta.ppf(0.95, erros + 1, n - erros) if lado == "sup" else beta.ppf(0.05, np.maximum(erros, 1e-9), n - erros + 1)
+
+
+def limiar_seguro(s, y, meta, garantia=True):
+    """Maior t tal que, entre os exemplos com nota < t, a taxa de erro (ou o seu limite superior 95%) fica ≤ meta."""
+    s, y = np.asarray(s, float), np.asarray(y); o = np.argsort(s, kind="stable"); n = np.arange(1, len(y) + 1)
+    ok = np.where(_taxa(np.cumsum(y[o]), n, garantia, "sup") <= meta)[0]
+    return s[o][ok[-1]] + 1e-12 if len(ok) else -np.inf
+
+
+def limiar_alarme(s, y, meta, garantia=True):
+    """Menor t tal que, entre os exemplos com nota > t, a taxa de erro (ou o seu limite inferior 95%) fica ≥ meta."""
+    s, y = np.asarray(s, float), np.asarray(y); o = np.argsort(-s, kind="stable"); n = np.arange(1, len(y) + 1)
+    ok = np.where(_taxa(np.cumsum(y[o]), n, garantia, "inf") >= meta)[0]
+    return s[o][ok[-1]] - 1e-12 if len(ok) else np.inf
+
+
+def zona(s_inf, s_sup, t_seg, t_al):
+    """'seguro' se s_sup < t_seg; 'alarme' se s_inf > t_al; senão 'incerto'. No tipo 1, s_inf = s_sup."""
+    seg = np.asarray(s_sup) < t_seg; al = (np.asarray(s_inf) > t_al) & ~seg
+    return np.where(seg, "seguro", np.where(al, "alarme", "incerto"))
 
 
 def auroc_alem_de_p(F, y, cand, resposta="p", faixas=5):

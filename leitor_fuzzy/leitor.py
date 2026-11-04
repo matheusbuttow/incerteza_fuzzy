@@ -1,9 +1,16 @@
 """
 leitor.py — LeitorFuzzy: lê uma rede congelada qualquer por dentro e diz quando ela provavelmente alucinou.
 
-    lf = LeitorFuzzy(rede).fit(dados_referencia, dados_calibracao)
+    lf = LeitorFuzzy(rede, tipo=2).fit(dados_referencia, dados_calibracao)
     risco = lf.risco(dados_teste)              # chance de alucinação de cada exemplo
+    cls = lf.classificar(dados_teste)          # SEGURO / INCERTO / ALARME, intervalo da nota e o motivo
     tab = lf.diagnostico(dados_teste)          # classes mais difíceis e o porquê
+
+Três zonas: dois limiares escolhidos na calibração (validação cruzada interna, 3 partes), com 95% de confiança:
+  SEGURO  = a rede erra no máximo `meta_seguro` (padrão: 1/3 da taxa de erro dela na calibração)
+  ALARME  = a rede erra pelo menos `meta_alarme` (padrão: 50%)
+  INCERTO = o resto. No tipo 2 a nota é um intervalo: seguro se o TOPO do intervalo está abaixo do limiar,
+  alarme se a BASE está acima.
 
 `dados_*` pode ser um DataLoader que devolve (x, y, ...) ou uma tupla de tensores (X, y).
 - referência: exemplos do TREINO (sondas, vizinhos). Não precisa de muitos: 2.000 a 5.000 bastam.
@@ -20,7 +27,7 @@ from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
 from .blocos import achar_blocos, resumo_vetor
-from .fuzzy import FuzzyAditivo, TERMOS, selecionar
+from .fuzzy import FuzzyAditivo, FuzzyAditivo2, TERMOS, limiar_alarme, limiar_seguro, selecionar, zona
 
 EPS = 1e-9
 CARACTERISTICAS = ["p", "trocas_opiniao", "prof_decisao", "entropia_probes", "conf_fim", "salto_final",
@@ -68,7 +75,8 @@ def _unit(a):
 
 class LeitorFuzzy:
     def __init__(self, rede, vistas="imagem", blocos=None, max_blocos=20, limiar=None, n_caracteristicas=4,
-                 k_vizinhos=15, pca=256, dispositivo=None):
+                 k_vizinhos=15, pca=256, dispositivo=None, tipo=1, meta_seguro=None, meta_alarme=0.5,
+                 garantia=True, n_boot=10, semente=0):
         """
         vistas: "imagem" (espelho horizontal), "deslocamento" (1 pixel; para dígitos/texto), uma lista de funções
                 x -> x' que NÃO mudam a classe, ou None (uma passada só, sem as características de estabilidade).
@@ -76,7 +84,13 @@ class LeitorFuzzy:
         blocos: lista de módulos para ler; None = achar sozinho (até `max_blocos`).
         limiar: só no binário; decisão = p >= limiar (padrão: argmax).
         n_caracteristicas: quantas o sistema fuzzy usa (p + n-1 escolhidas).
+        tipo: 1 (nota pontual) ou 2 (intervalo; faixa dos termos entre `n_boot` reamostragens da calibração).
+        meta_seguro / meta_alarme / garantia: as três zonas (veja o topo do arquivo).
         """
+        if tipo not in (1, 2):
+            raise ValueError("tipo deve ser 1 ou 2")
+        self.tipo, self.meta_seguro, self.meta_alarme, self.garantia = tipo, meta_seguro, meta_alarme, garantia
+        self.n_boot, self.semente = n_boot, semente
         self.rede = rede.eval()
         self.disp = dispositivo or next(rede.parameters()).device
         self.vistas = VISTAS_PADRAO[vistas] if isinstance(vistas, str) else list(vistas or [])
@@ -193,22 +207,54 @@ class LeitorFuzzy:
     def fit(self, referencia, calibracao, log=print):
         """Leitura (`preparar`) + sistema fuzzy aprendido nos erros da rede na calibração."""
         self.preparar(referencia, log)
-        F = self.caracteristicas(calibracao)
+        return self.ajustar(self.caracteristicas(calibracao), log)
+
+    def ajustar(self, F, log=print):
+        """Só o sistema fuzzy e os limiares das zonas, a partir de uma tabela de características já lida
+        (`caracteristicas(calibracao)`). Útil para testar tipo 1 × tipo 2 sem ler a rede de novo."""
         if "alucinou" not in F or F.alucinou.nunique() < 2:
             raise ValueError("A calibração precisa de rótulos e de pelo menos um erro e um acerto da rede.")
         y = F.alucinou.values
         fixos = {"p": [0.0, self.limiar if self.limiar is not None else 0.5, 1.0]} if self.n_classes == 2 else None
         cand = [c for c in CARACTERISTICAS if c in F]
         self.escolhidas = selecionar(F, y, cand, self.n_car)
-        self.fuzzy = FuzzyAditivo(fixos).fit(F[self.escolhidas].values, y, self.escolhidas)
-        self._contrib_media = self.fuzzy.contribuicoes(F[self.escolhidas].values).sum(2).mean(0)
-        log(f"  características escolhidas: {', '.join(self.escolhidas)}  |  {int(y.sum())} alucinações na calibração")
+        X = F[self.escolhidas].values
+        novo = lambda: (FuzzyAditivo(fixos) if self.tipo == 1 else
+                        FuzzyAditivo2(fixos, n_boot=self.n_boot, semente=self.semente))
+        # limiares das zonas: notas fora-da-parte DENTRO da calibração (validação cruzada interna)
+        from sklearn.model_selection import StratifiedKFold
+        lo, hi = np.zeros(len(y)), np.zeros(len(y))
+        k = min(3, int(np.bincount(y, minlength=2).min()))
+        if k >= 2:
+            for a, b in StratifiedKFold(k, shuffle=True, random_state=self.semente).split(X, y):
+                lo[b], hi[b], _ = novo().fit(X[a], y[a], self.escolhidas).intervalo(X[b])
+        self.fuzzy = novo().fit(X, y, self.escolhidas)
+        if k < 2:
+            lo, hi, _ = self.fuzzy.intervalo(X)
+        meta_seg = self.meta_seguro if self.meta_seguro is not None else y.mean() / 3
+        self.t_seguro = limiar_seguro(hi, y, meta_seg, self.garantia)
+        self.t_alarme = limiar_alarme(lo, y, self.meta_alarme, self.garantia)
+        self.meta_seguro_usada = meta_seg
+        self._contrib_media = self.fuzzy.contribuicoes(X).sum(2).mean(0)
+        log(f"  tipo {self.tipo} | características: {', '.join(self.escolhidas)} | {int(y.sum())} alucinações na calibração"
+            f" | zonas: seguro = erro ≤ {meta_seg:.1%}, alarme = erro ≥ {self.meta_alarme:.0%}")
         return self
 
     # ------------------------------------------------------------------ uso
     def risco(self, dados, F=None):
         F = self.caracteristicas(dados) if F is None else F
         return self.fuzzy.risco(F[self.escolhidas].values)
+
+    def classificar(self, dados, F=None):
+        """Uma linha por exemplo: nota (e o intervalo, no tipo 2), zona SEGURO / INCERTO / ALARME e o motivo."""
+        F = self.caracteristicas(dados) if F is None else F
+        lo, hi, s = self.fuzzy.intervalo(F[self.escolhidas].values)
+        out = pd.DataFrame({"decisao": F.decisao.values, "confianca": F.confianca.values, "risco": s,
+                            "risco_inf": lo, "risco_sup": hi, "zona": zona(lo, hi, self.t_seguro, self.t_alarme)})
+        out["motivo"] = np.where(out.zona == "seguro", "-", self.explicar(F).motivo.values)   # motivo só quando há aviso
+        if "alucinou" in F:
+            out["rotulo"], out["alucinou"] = F.rotulo.values, F.alucinou.values
+        return out
 
     def explicar(self, F):
         """Para cada exemplo: a regra que mais aumentou o risco em relação ao exemplo típico, em palavras."""
@@ -222,21 +268,21 @@ class LeitorFuzzy:
         return pd.DataFrame({"caracteristica": nomes, "termo": [TERMOS[b] for b in k],
                              "motivo": [MOTIVO.get(n, n).format(t=TERMOS[b].lower()) for n, b in zip(nomes, k)]})
 
-    def diagnostico(self, dados, nomes_classes=None, limiar_alerta=None):
+    def diagnostico(self, dados, nomes_classes=None):
         """Uma linha por classe verdadeira: acurácia, alucinações, para qual classe ela mais erra,
-        quantas alucinações o sistema pegou e o motivo mais comum."""
+        quantas alucinações o sistema avisou (alarme ou incerto), quantas escaparam (seguro) e o motivo mais comum."""
         F = self.caracteristicas(dados)
         if "rotulo" not in F:
             raise ValueError("O diagnóstico por classe precisa dos rótulos.")
-        F["risco"] = self.risco(None, F)
-        lim = limiar_alerta if limiar_alerta is not None else np.quantile(F.risco, 1 - max(F.alucinou.mean(), 0.05))
-        F = pd.concat([F, self.explicar(F)], axis=1)
+        Z = self.classificar(None, F); Z["motivo"] = self.explicar(F).motivo.values   # aqui: motivo de todo erro
+        F = pd.concat([F, Z[["risco", "risco_inf", "risco_sup", "zona", "motivo"]]], axis=1)
         nome = (lambda c: nomes_classes[c]) if nomes_classes is not None else (lambda c: str(c))
         lin = []; geral = F[F.alucinou == 1].motivo.value_counts(normalize=True)
         for c, g in F.groupby("rotulo"):
             e = g[g.alucinou == 1]
             linha = {"classe": nome(c), "exemplos": len(g), "acurácia": round(1 - g.alucinou.mean(), 3),
-                     "alucinações": len(e), "pegas pelo alerta": int((e.risco >= lim).sum()),
+                     "alucinações": len(e), "no alarme": int((e.zona == "alarme").sum()),
+                     "no incerto": int((e.zona == "incerto").sum()), "escaparam (seguro)": int((e.zona == "seguro").sum()),
                      "confunde mais com": nome(e.decisao.mode()[0]) if len(e) else "-"}
             if len(e):
                 mot = e.motivo.value_counts(normalize=True)
@@ -248,3 +294,15 @@ class LeitorFuzzy:
             lin.append(linha)
         self.ultimo_detalhe = F
         return pd.DataFrame(lin).sort_values("acurácia").reset_index(drop=True)
+
+    def resumo_zonas(self, dados=None, Z=None):
+        """Tabela das três zonas: % dos exemplos, taxa de erro da rede em cada uma e % dos erros que caem nela."""
+        Z = self.classificar(dados) if Z is None else Z
+        if "alucinou" not in Z:
+            raise ValueError("O resumo precisa dos rótulos.")
+        y = Z.alucinou.values; lin = []
+        for nz in ("seguro", "incerto", "alarme"):
+            m = (Z.zona == nz).values
+            lin.append({"zona": nz, "% dos exemplos": m.mean(), "taxa de erro da rede": y[m].mean() if m.any() else np.nan,
+                        "% dos erros": y[m].sum() / max(y.sum(), 1)})
+        return pd.DataFrame(lin)

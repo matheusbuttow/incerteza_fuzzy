@@ -16,6 +16,22 @@ print(lf.diagnostico((X_teste, y_teste), nomes_classes))         # classes mais 
 
 Os dados podem ser tuplas de tensores `(X, y)` ou um `DataLoader` que devolve `(x, y, ...)`.
 
+## Tipo 1, tipo 2 e as três zonas
+
+```python
+lf = LeitorFuzzy(rede, vistas="imagem", tipo=2).fit((X_treino, y_treino), (X_val, y_val))
+Z = lf.classificar((X_teste, y_teste))     # risco, risco_inf, risco_sup, zona, motivo (por exemplo)
+print(lf.resumo_zonas(Z=Z))                # % dos exemplos, taxa de erro e % dos erros em cada zona
+```
+
+- **tipo=1**: uma nota por exemplo. **tipo=2**: um intervalo [risco_inf, risco_sup]; os termos BAIXA/MÉDIA/ALTA têm uma
+  faixa de picos, tirada de `n_boot` reamostragens da calibração (com várias redes, veja `tipo1_vs_tipo2.py`).
+- **Zonas**: SEGURO = a rede erra no máximo `meta_seguro` (padrão: 1/3 da taxa de erro na calibração);
+  ALARME = erra pelo menos `meta_alarme` (50%); INCERTO = o resto. Os limiares são escolhidos na calibração
+  (validação cruzada interna) com 95% de confiança (`garantia=True`). No tipo 2: seguro se o topo do intervalo
+  está abaixo do limiar, alarme se a base está acima.
+- `ajustar(F)`: refaz só a parte fuzzy a partir de `caracteristicas(calibracao)`, sem ler a rede de novo.
+
 ## O que cada parte faz
 
 | arquivo | o que faz |
@@ -25,6 +41,7 @@ Os dados podem ser tuplas de tensores `(X, y)` ou um `DataLoader` que devolve `(
 | `fuzzy.py` | partição triangular 5/50/95, fuzzy aditivo, seleção por AUROC além de p com corte de correlação 0,85 |
 | `treino.py` | treino simples (Adam + entropia cruzada), opcional |
 | `exemplo_mnist.py` | teste com 5.000 dígitos reais do MNIST (vêm dentro do pacote `mlxtend`) |
+| `teste_tipos.py` | tipo 1 × tipo 2 com as três zonas, 3 redes × 5 sementes |
 
 ## Vistas (imagem transformada)
 
