@@ -42,3 +42,12 @@ Sem internet: baixe os pesos do torchvision antes e use `--pesos resnet50=/camin
 - `regras_t2_*` e `faixas_*`: as regras do fuzzy aditivo e onde fica o pico de cada termo em cada rede
 - `notas_*`: a nota de cada imagem em cada método (para gráficos)
 - `interno_wm_*`: Wang-Mendel, só para consulta (fora do artigo)
+
+
+## Três zonas: tipo 1 × tipo 2 (atualizado)
+
+Para cada rede de fora, o tipo 1 e o tipo 2 transferidos classificam cada imagem em **seguro / incerto / alarme**
+com dois limiares escolhidos nas redes de origem, com garantia de 95% (Clopper–Pearson):
+seguro = a rede erra no máximo `--meta-seguro` (padrão 5%), alarme = erra pelo menos `--meta-alarme` (padrão 50%).
+Abas novas em `resultados_tipo2.xlsx`: `zonas`, `classificacao` (erros pegos, alarmes falsos, erros que escapam)
+e `tipo1_vs_tipo2` (os dois lado a lado). O fuzzy aditivo usa agora P + 3 características (`--k-aditivo 4`), como no artigo.

@@ -59,6 +59,10 @@ N_BOOT = 1000                  # reamostragens para os intervalos de confiança
 FEATURES_WM = 3                # Wang-Mendel: P + 2 features
 FEATURES_ADITIVO = 4           # fuzzy aditivo: P + 3 features
 ENCAMINHAR = [round(0.05 * i, 2) for i in range(11)]   # 0%, 5%, ..., 50% encaminhados ao especialista
+# três zonas (classificar cada resposta da rede em SEGURO / INCERTO / ALARME), limiares escolhidos no treino de cada dobra
+ZONA_META_SEGURO_REL = 1 / 3   # SEGURO: a rede erra no máximo 1/3 da sua taxa de erro normal (ex.: 15% → 5%)
+ZONA_META_ALARME = 0.50        # ALARME: a rede erra em pelo menos 50% dessas imagens
+ZONA_GARANTIA = True           # True: vale com 95% de confiança (limite de Clopper–Pearson); False: taxa observada
 
 # ----------------------------------------------------------------------------- teste rápido (sem GPU, dados falsos)
 TESTE_RAPIDO = False           # rodar.py --teste-rapido liga isto

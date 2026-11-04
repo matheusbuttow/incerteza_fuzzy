@@ -16,7 +16,7 @@ import pandas as pd
 import torch
 import torch.nn as nn
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "experimentos" / "ham_tipo2"))
+sys.path.append(str(Path(__file__).resolve().parents[1] / "experimentos" / "ham_tipo2"))
 import fuzzy_t2 as t2  # noqa: E402
 
 from leitor_fuzzy import LeitorFuzzy, treinar_rede  # noqa: E402

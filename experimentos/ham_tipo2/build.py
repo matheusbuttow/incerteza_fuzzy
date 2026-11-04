@@ -89,15 +89,27 @@ Cada coluna é a rede que ficou de fora (o sistema nunca viu os erros dela).
 com o IC do ganho acima de zero; e a zona *incerto* concentra mais erros do que a zona *seguro*.
 """)
 code("""
-res, zonas, regras, fous, preds = ft.deixa_uma_fora(tabs, lg.FEATURES, cfg.k_features, cfg.k_aditivo, cfg.forcar, cfg.q_alarme, cfg.n_boot)
+res, zonas, classif, regras, fous, preds = ft.deixa_uma_fora(tabs, lg.FEATURES, cfg.k_features, cfg.k_aditivo, cfg.forcar,
+                                                             cfg.meta_seguro, cfg.meta_alarme, cfg.garantia, cfg.n_boot)
 princ = res[res.método.isin(ft.PRINCIPAIS)]
 for met in ['AUROC', 'AUROC além de P', 'AURC (menor=melhor)']:
     print(met); display(princ.pivot_table(index='método', columns='rede alvo', values=met).reindex(ft.PRINCIPAIS).round(3))
 display(princ[princ.método.str.contains(': tipo 2')][['rede alvo', 'método', 'ganho de AUROC sobre o tipo 1 transferido', 'IC 95% do ganho']])
 """)
 
-md("### As três zonas do tipo 2 (limiar escolhido nas redes de origem)")
-code("display(zonas[zonas.sistema.str.startswith('Fuzzy aditivo')].round(3))")
+md("""
+### As três zonas: tipo 1 × tipo 2
+
+Dois limiares escolhidos nas redes de origem, com garantia de 95%: **seguro** = a rede erra no máximo `meta_seguro`;
+**alarme** = a rede erra pelo menos `meta_alarme`; **incerto** = o resto. No tipo 1 a nota é um número; no tipo 2, um intervalo.
+""")
+code("""
+display(zonas[zonas.sistema.str.startswith('Fuzzy aditivo')].round(3))
+c = classif[classif.sistema.str.startswith('Fuzzy aditivo')]
+print("'A rede vai errar?' — alarme + incerto = revisar")
+display(c[c['previsão de erro'] == 'alarme + incerto'][['rede alvo', 'sistema', 'erros da rede', 'erros pegos',
+        'erros que escapam', 'alarmes falsos', 'imagens para revisar']].round(3))
+""")
 
 md("""
 ## 4. As regras e as faixas
@@ -124,7 +136,7 @@ display(zonas[zonas.sistema.str.startswith('Wang-Mendel')].round(3))
 
 md("## 7. Salvar (mande este arquivo)")
 code("""
-arq = ex.salvar(cfg, infos, hists, tabs, res, zonas, regras, fous, preds)
+arq = ex.salvar(cfg, infos, hists, tabs, res, zonas, classif, regras, fous, preds)
 print('Salvo:', arq)
 """)
 

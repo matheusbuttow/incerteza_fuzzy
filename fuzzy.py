@@ -171,3 +171,31 @@ def diagnostico(tab, cand, escolhas=None):
                     "mediana acertos": np.median(v[y == 0]), "mediana erros": np.median(v[y == 1]),
                     "mais parecida com": f"{R[f].idxmax()} ({R[f].max():.2f})"})
     return pd.DataFrame(lin).sort_values("AUROC além de P", ascending=False).reset_index(drop=True)
+
+
+# ----------------------------------------------------------------------------- três zonas
+def _taxa(erros, n, garantia, lado):
+    """Taxa de erro observada, ou o limite de Clopper–Pearson (95%) quando garantia=True."""
+    if not garantia:
+        return erros / n
+    from scipy.stats import beta
+    return beta.ppf(0.95, erros + 1, n - erros) if lado == "sup" else beta.ppf(0.05, np.maximum(erros, 1e-9), n - erros + 1)
+
+
+def limiar_seguro(s, y, meta, garantia=True):
+    """Maior t tal que, entre as imagens com nota < t, a taxa de erro (ou o seu limite superior 95%) fica ≤ meta."""
+    s, y = np.asarray(s, float), np.asarray(y); o = np.argsort(s, kind="stable"); n = np.arange(1, len(y) + 1)
+    ok = np.where(_taxa(np.cumsum(y[o]), n, garantia, "sup") <= meta)[0]
+    return s[o][ok[-1]] + 1e-12 if len(ok) else -np.inf
+
+
+def limiar_alarme(s, y, meta, garantia=True):
+    """Menor t tal que, entre as imagens com nota > t, a taxa de erro (ou o seu limite inferior 95%) fica ≥ meta."""
+    s, y = np.asarray(s, float), np.asarray(y); o = np.argsort(-s, kind="stable"); n = np.arange(1, len(y) + 1)
+    ok = np.where(_taxa(np.cumsum(y[o]), n, garantia, "inf") >= meta)[0]
+    return s[o][ok[-1]] - 1e-12 if len(ok) else np.inf
+
+
+def zona(s, t_seg, t_al):
+    s = np.asarray(s, float)
+    return np.where(s < t_seg, "seguro", np.where(s > t_al, "alarme", "incerto"))

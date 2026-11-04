@@ -22,12 +22,19 @@ if __name__ == "__main__":
     ap.add_argument("--bs", type=int, default=32)
     ap.add_argument("--n-ref", type=int, default=2000)
     ap.add_argument("--k", type=int, default=3, help="features por regra do Wang-Mendel")
-    ap.add_argument("--k-aditivo", type=int, default=5, help="features do fuzzy aditivo / regressão logística / boosting")
+    ap.add_argument("--k-aditivo", type=int, default=4, help="features do fuzzy aditivo / regressão logística / boosting")
+    ap.add_argument("--meta-seguro", type=float, default=0.05, help="zona SEGURO: erro da rede no máximo isto")
+    ap.add_argument("--meta-alarme", type=float, default=0.50, help="zona ALARME: erro da rede no mínimo isto")
     ap.add_argument("--pesos", nargs="*", default=[], help="pesos locais do ImageNet: nome=caminho.pth")
     ap.add_argument("--max-imagens", type=int, default=0, help=">0: usa só uma amostra de lesões (teste)")
     a = ap.parse_args()
     cfg = ex.Config(metadata_csv=a.metadata, img_dirs=a.imagens, saida=a.saida, arquiteturas=a.arqs,
                     epocas=a.epocas, bs=a.bs, n_ref=a.n_ref, k_features=a.k, k_aditivo=a.k_aditivo, max_imagens=a.max_imagens,
+                    meta_seguro=a.meta_seguro, meta_alarme=a.meta_alarme,
                     pesos_locais=dict(p.split("=", 1) for p in a.pesos))
     r = ex.rodar_tudo(cfg)
     print(r["res"].pivot_table(index="método", columns="rede alvo", values="AUROC").round(3).to_string())
+    c = r["classificacao"]; c = c[c.sistema.str.startswith("Fuzzy aditivo")]
+    print("\nTipo 1 × tipo 2 — 'a rede vai errar?' (alarme + incerto = revisar):")
+    print(c[c["previsão de erro"] == "alarme + incerto"][["rede alvo", "sistema", "erros da rede", "erros pegos",
+          "erros que escapam", "alarmes falsos", "imagens para revisar"]].round(3).to_string(index=False))

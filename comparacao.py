@@ -146,6 +146,62 @@ def avaliar(tab, extras, binario, limiar, y_teste, semente):
     return oof, escolhas, fixos
 
 
+# ----------------------------------------------------------------------------- três zonas (tipo 1)
+def _seguro(ajusta):
+    """Se os dados de ajuste têm uma classe só (rede que quase nunca erra ou quase sempre erra), devolve uma nota constante."""
+    return lambda X, y: ajusta(X, y) if len(np.unique(y)) > 1 else (lambda Z, c=float(np.mean(y)): np.full(len(Z), c))
+
+
+def _oof_interno(ajusta, X, y, semente, k=3):
+    """Notas fora-da-dobra DENTRO do treino (para escolher os limiares sem olhar o teste nem notas de treino)."""
+    s = np.zeros(len(y)); k = min(k, int(min(np.bincount(y.astype(int), minlength=2))))
+    if k < 2:
+        return np.full(len(y), float(np.mean(y)))
+    for a, b in StratifiedKFold(k, shuffle=True, random_state=semente + 1).split(X, y):
+        s[b] = _seguro(ajusta)(X[a], y[a])(X[b])
+    return s
+
+
+def zonas(tab, binario, limiar, semente):
+    """Classifica cada resposta da rede em SEGURO / INCERTO / ALARME (fuzzy aditivo e Só P, mesmas dobras de `avaliar`).
+    Limiares escolhidos só no treino de cada dobra: SEGURO = erro ≤ ZONA_META_SEGURO_REL × erro da rede;
+    ALARME = erro ≥ ZONA_META_ALARME (com garantia de 95% se ZONA_GARANTIA). Devolve (zona por imagem, resumo)."""
+    y = tab.erro.values; n = len(y)
+    fixos = {"p": [0.0, limiar, 1.0]} if binario and limiar is not None else None
+    cand = [c for c in NOSSAS if c in tab]
+    z = {m: np.full(n, "", dtype=object) for m in ("NOSSO: Fuzzy aditivo", "Só P")}
+    metas = []
+    for tr, te in StratifiedKFold(C.N_FOLDS, shuffle=True, random_state=semente).split(tab, y):
+        d = tab.iloc[tr]; ytr = y[tr]                                         # seleção só no treino da dobra
+        meta_seg = C.ZONA_META_SEGURO_REL * ytr.mean(); metas.append(meta_seg)
+        feats = fz.selecionar(d, cand, C.FEATURES_ADITIVO)
+        fz_fit = lambda X, yy, f=feats: (lambda m: (lambda Z: m.predict_proba(Z)[:, 1]))(fz.FuzzyAditivo(fixos).fit(X, yy, f))
+        if binario:
+            sp_fit = lambda X, yy: (lambda m: (lambda Z: m.predict_proba(Z)[:, 1]))(
+                make_pipeline(StandardScaler(), LogisticRegression(max_iter=3000)).fit(X, yy))
+            Xsp = _p2(tab)
+        else:
+            sp_fit = lambda X, yy: (lambda Z: Z[:, 0]); Xsp = tab[["msp"]].values
+        for m, ajusta, X in [("NOSSO: Fuzzy aditivo", fz_fit, tab[feats].values), ("Só P", sp_fit, Xsp)]:
+            s_in = _oof_interno(ajusta, X[tr], ytr, semente)
+            t_seg = fz.limiar_seguro(s_in, ytr, meta_seg, C.ZONA_GARANTIA)
+            t_al = fz.limiar_alarme(s_in, ytr, C.ZONA_META_ALARME, C.ZONA_GARANTIA)
+            z[m][te] = fz.zona(_seguro(ajusta)(X[tr], ytr)(X[te]), t_seg, t_al)
+    lin = []
+    for m, zz in z.items():
+        for nome_z in ("alarme", "incerto", "seguro"):
+            mz = zz == nome_z
+            lin.append({"método": m, "zona": nome_z, "% das imagens": mz.mean(), "imagens": int(mz.sum()),
+                        "taxa de erro da rede na zona": y[mz].mean() if mz.any() else np.nan,
+                        "erros na zona": int(y[mz].sum()), "% dos erros": y[mz].sum() / max(y.sum(), 1)})
+        prev, yb = zz != "seguro", y.astype(bool)
+        lin.append({"método": m, "zona": "revisar (alarme + incerto)", "% das imagens": prev.mean(), "imagens": int(prev.sum()),
+                    "taxa de erro da rede na zona": y[prev].mean() if prev.any() else np.nan,
+                    "erros na zona": int(y[prev].sum()), "% dos erros": y[prev].sum() / max(y.sum(), 1)})
+    res = pd.DataFrame(lin); res["meta seguro (média das dobras)"] = np.mean(metas); res["erro da rede"] = y.mean()
+    return pd.DataFrame({k.replace("NOSSO: ", "zona "): v for k, v in z.items()}), res
+
+
 # ----------------------------------------------------------------------------- métricas
 def aurc(erro, s):
     e = np.asarray(erro, float)[np.argsort(s, kind="stable")]

@@ -40,9 +40,11 @@ class Config:
     frac_teste: float = 0.25
     n_ref: int = 2000                 # imagens do treino usadas para treinar as probes e o banco de vizinhos
     k_features: int = 3               # features por regra (Wang-Mendel)
-    k_aditivo: int = 5                # features do fuzzy aditivo, da regressão logística e do boosting
+    k_aditivo: int = 4                # features do fuzzy aditivo, da regressão logística e do boosting (P + 3, como no artigo)
     forcar: tuple = ("prox_p",)       # features que sempre entram (P é a pista mais forte)
-    q_alarme: float = 0.20            # fração das imagens de origem acima do limiar do alarme
+    meta_seguro: float = 0.05         # zona SEGURO: erro da rede ≤ 5% (com 95% de confiança, nas redes de origem)
+    meta_alarme: float = 0.50         # zona ALARME: erro da rede ≥ 50%
+    garantia: bool = True             # False: usa a taxa observada, sem o limite de Clopper–Pearson
     n_boot: int = 1000
     pretreinado: bool = True
     pesos_locais: dict = field(default_factory=dict)   # {"resnet50": "/kaggle/input/.../resnet50.pth"} se não houver internet
@@ -174,7 +176,7 @@ def figuras(tabs, fous, preds, pasta, log=print):
     return arqs
 
 
-def salvar(cfg, infos, hists, tabs, res, zonas, regras, fous, preds):
+def salvar(cfg, infos, hists, tabs, res, zonas, classif, regras, fous, preds):
     """Abas principais = só P, referências não fuzzy e fuzzy aditivo (o que vai para o artigo).
     Wang-Mendel fica em abas 'interno_*', só para consulta."""
     arq = Path(cfg.saida) / "resultados_tipo2.xlsx"
@@ -185,7 +187,14 @@ def salvar(cfg, infos, hists, tabs, res, zonas, regras, fous, preds):
         pd.DataFrame(infos).to_excel(xw, sheet_name="redes", index=False)
         resumo.round(4).to_excel(xw, sheet_name="resumo_AUROC")
         princ.round(4).to_excel(xw, sheet_name="deixa_uma_fora", index=False)
-        zonas[zonas.sistema.str.startswith("Fuzzy aditivo")].round(4).to_excel(xw, sheet_name="zonas", index=False)
+        za = zonas[zonas.sistema.str.startswith("Fuzzy aditivo")]
+        za.round(4).to_excel(xw, sheet_name="zonas", index=False)
+        ca = classif[classif.sistema.str.startswith("Fuzzy aditivo")]
+        ca.round(4).to_excel(xw, sheet_name="classificacao", index=False)
+        # tipo 1 × tipo 2 lado a lado
+        ca.pivot_table(index=["rede alvo", "previsão de erro"], columns="sistema",
+                       values=["erros pegos", "erros que escapam", "alarmes falsos", "imagens para revisar"]).round(3) \
+          .to_excel(xw, sheet_name="tipo1_vs_tipo2")
         for (alvo, fam), r in regras.items():
             if fam == "Fuzzy aditivo":
                 r.to_excel(xw, sheet_name=f"regras_t2_{alvo}"[:31], index=False)
@@ -198,6 +207,7 @@ def salvar(cfg, infos, hists, tabs, res, zonas, regras, fous, preds):
         # só para consulta
         intern.round(4).to_excel(xw, sheet_name="interno_wm_metricas", index=False)
         zonas[zonas.sistema.str.startswith("Wang-Mendel")].round(4).to_excel(xw, sheet_name="interno_wm_zonas", index=False)
+        classif[classif.sistema.str.startswith("Wang-Mendel")].round(4).to_excel(xw, sheet_name="interno_wm_classif", index=False)
         for (alvo, fam), r in regras.items():
             if fam == "Wang-Mendel":
                 r.to_excel(xw, sheet_name=f"interno_wm_regras_{alvo}"[:31], index=False)
@@ -215,10 +225,10 @@ def rodar_tudo(cfg, log=print):
         del rede
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
-    res, zonas, regras, fous, preds = ft.deixa_uma_fora(tabs, lg.FEATURES, cfg.k_features, cfg.k_aditivo, cfg.forcar,
-                                                        cfg.q_alarme, cfg.n_boot, log)
+    res, zonas, classif, regras, fous, preds = ft.deixa_uma_fora(tabs, lg.FEATURES, cfg.k_features, cfg.k_aditivo, cfg.forcar,
+                                                                 cfg.meta_seguro, cfg.meta_alarme, cfg.garantia, cfg.n_boot, log)
     figs = figuras(tabs, fous, preds, cfg.saida, log)
-    arq = salvar(cfg, infos, hists, tabs, res, zonas, regras, fous, preds)
+    arq = salvar(cfg, infos, hists, tabs, res, zonas, classif, regras, fous, preds)
     log(f"pronto em {(time.time() - t0) / 60:.1f} min → {arq}")
-    return {"meta": meta, "infos": infos, "hists": hists, "tabs": tabs, "res": res, "zonas": zonas,
+    return {"meta": meta, "infos": infos, "hists": hists, "tabs": tabs, "res": res, "zonas": zonas, "classificacao": classif,
             "regras": regras, "fous": fous, "preds": preds, "figuras": figs, "planilha": arq}

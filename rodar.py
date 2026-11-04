@@ -117,6 +117,8 @@ def rodar_um(exp, semente, disp, refazer):
         fz.diagnostico(tab, cand, escolhas["NOSSO: Fuzzy aditivo"]).to_csv(pasta / "diagnostico_features.csv", index=False)
         nossas = [c for c in NOSSAS if c in tab]   # correlação (Spearman) entre as 11 candidatas: motivo da seleção
         tab[nossas].corr("spearman").round(3).to_csv(pasta / "correlacao_features.csv")
+        zpi, zres = cmp.zonas(tab, conj.binario, info["limiar"], semente)              # SEGURO / INCERTO / ALARME
+        zpi.assign(erro=y).to_csv(pasta / "zonas_por_imagem.csv.gz", index=False); zres.to_csv(pasta / "zonas.csv", index=False)
         rwm, rad, est = cmp.regras_finais(tab, fixos)
         rwm.to_csv(pasta / "regras_wang_mendel.csv", index=False); rad.to_csv(pasta / "regras_fuzzy_aditivo.csv", index=False)
         _json({**est, "escolhas por fold": escolhas}, pasta / "regras_info.json")

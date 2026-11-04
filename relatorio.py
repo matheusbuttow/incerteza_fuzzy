@@ -62,6 +62,7 @@ def ler_tudo(saida):
             "rejeicao": junta("curva_rejeicao.csv"), "risco": junta("curva_risco_cobertura.csv"), "roc": junta("curva_roc.csv"),
             "regras_wm": junta("regras_wang_mendel.csv"), "regras_ad": junta("regras_fuzzy_aditivo.csv"),
             "corr": junta("correlacao_features.csv", lambda p: pd.read_csv(p).rename(columns={"Unnamed: 0": "feature"})),
+            "zonas": junta("zonas.csv"),
             "dx_type": junta("ham_dx_type.csv"), "multifotos": junta("ham_multifotos.csv"), "cifar10h": junta("cifar10h.csv")}
 
 
@@ -350,6 +351,11 @@ if __name__ == "__main__":
                                             corr_com_P=("corr. com P", lambda v: v.abs().mean()), escolhida=("escolhida (folds)", "sum"))
             res["escolhida_%"] = 100 * res.pop("escolhida") / (nexec * C.N_FOLDS)
             res.sort_values("escolhida_%", ascending=False).round(3).to_excel(xw, sheet_name="selecao_features")
+        if len(R["zonas"]):   # SEGURO / INCERTO / ALARME: média das sementes, por experimento
+            z = R["zonas"]
+            z.groupby(["experimento", "método", "zona"], sort=False)[["% das imagens", "taxa de erro da rede na zona", "% dos erros",
+                      "erro da rede", "meta seguro (média das dobras)"]].mean().round(3).to_excel(xw, sheet_name="zonas")
+            z.round(4).to_excel(xw, sheet_name="zonas_por_semente", index=False)
         R["regras_wm"].to_excel(xw, sheet_name="regras_wang_mendel", index=False)
         R["regras_ad"].to_excel(xw, sheet_name="regras_fuzzy_aditivo", index=False)
         for k in ("dx_type", "multifotos", "cifar10h"):

@@ -16,7 +16,9 @@ INFERÊNCIA DO TIPO 2: cada regra dispara com uma força num intervalo [f_inf, f
   Nota pontual = a nota com as pertinências do MEIO da faixa (fica sempre dentro do intervalo).
   Largura = o quanto as redes discordam naquele caso; [0, 1] = discordância total (termos sem sobreposição).
 
-TRÊS ZONAS: limiar τ escolhido nas redes de origem. alarme: s_inf > τ · seguro: s_sup < τ · incerto: o resto.
+TRÊS ZONAS (tipo 1 e tipo 2): dois limiares escolhidos nas redes de origem, com garantia de 95% (Clopper–Pearson):
+  seguro: s_sup < t_seg (erro ≤ meta_seguro) · alarme: s_inf > t_al (erro ≥ meta_alarme) · incerto: o resto.
+  No tipo 1, s_inf = s_sup = s.
 """
 
 import numpy as np
@@ -271,32 +273,76 @@ def _pesos(y, g):
     return w
 
 
-def _zonas(alvo, sistema, y, s_inf, s_sup, tau):
+def _taxa(erros, n, garantia, lado):
+    """Taxa de erro observada, ou o limite de Clopper–Pearson (95%) quando garantia=True:
+    'sup' para o seguro (pior caso = mais erro), 'inf' para o alarme (pior caso = menos erro)."""
+    if not garantia:
+        return erros / n
+    from scipy.stats import beta
+    return beta.ppf(0.95, erros + 1, n - erros) if lado == "sup" else beta.ppf(0.05, np.maximum(erros, 1e-9), n - erros + 1)
+
+
+def limiar_seguro(s_sup, y, meta, garantia=True):
+    """Maior t tal que, entre as imagens com s_sup < t, a taxa de erro (ou o seu limite superior 95%) fica ≤ meta."""
+    o = np.argsort(s_sup); n = np.arange(1, len(y) + 1)
+    ok = np.where(_taxa(np.cumsum(np.asarray(y)[o]), n, garantia, "sup") <= meta)[0]
+    return np.asarray(s_sup)[o][ok[-1]] if len(ok) else -np.inf
+
+
+def limiar_alarme(s_inf, y, meta, garantia=True):
+    """Menor t tal que, entre as imagens com s_inf > t, a taxa de erro (ou o seu limite inferior 95%) fica ≥ meta."""
+    o = np.argsort(-np.asarray(s_inf)); n = np.arange(1, len(y) + 1)
+    ok = np.where(_taxa(np.cumsum(np.asarray(y)[o]), n, garantia, "inf") >= meta)[0]
+    return np.asarray(s_inf)[o][ok[-1]] if len(ok) else np.inf
+
+
+def zona(s_inf, s_sup, t_seg, t_al):
+    """'seguro' se s_sup < t_seg; 'alarme' se s_inf > t_al; senão 'incerto'. No tipo 1, s_inf = s_sup = s."""
+    seg = s_sup < t_seg; al = (s_inf > t_al) & ~seg
+    return np.where(seg, "seguro", np.where(al, "alarme", "incerto"))
+
+
+def _zonas(alvo, sistema, y, z):
     out = []
-    for nome_z, mz in [("alarme", s_inf > tau), ("incerto", (s_inf <= tau) & (s_sup >= tau)), ("seguro", s_sup < tau)]:
-        if nome_z == "incerto" and np.allclose(s_inf, s_sup, equal_nan=True):
-            continue
+    for nome_z in ("alarme", "incerto", "seguro"):
+        mz = z == nome_z
         out.append({"rede alvo": alvo, "sistema": sistema, "zona": nome_z, "imagens": int(mz.sum()),
                     "% das imagens": mz.mean(), "taxa de erro da rede na zona": y[mz].mean() if mz.any() else np.nan,
                     "erros na zona": int(y[mz].sum()), "% dos erros": y[mz].sum() / max(y.sum(), 1)})
     return out
 
 
-def deixa_uma_fora(tabs, cand, k_wm=3, k_ad=5, forcar=("prox_p",), q_alarme=0.2, n_boot=1000, log=print):
+def classificacao(alvo, sistema, y, z):
+    """'A rede vai errar?' — sistema × o que a rede fez. Duas leituras: só o alarme, ou alarme + incerto (= revisar)."""
+    y = np.asarray(y).astype(bool); out = []
+    for leitura, prev in [("só alarme", z == "alarme"), ("alarme + incerto", z != "seguro")]:
+        vp, fp, fn, vn = (prev & y).sum(), (prev & ~y).sum(), (~prev & y).sum(), (~prev & ~y).sum()
+        out.append({"rede alvo": alvo, "sistema": sistema, "previsão de erro": leitura, "erros da rede": int(y.sum()),
+                    "erros pegos": int(vp), "alarmes falsos": int(fp), "erros que escapam": int(fn), "acertos liberados": int(vn),
+                    "sensibilidade (erros pegos)": vp / max(vp + fn, 1), "precisão do aviso": vp / max(vp + fp, 1),
+                    "especificidade": vn / max(vn + fp, 1), "imagens para revisar": float(prev.mean())})
+    return out
+
+
+def deixa_uma_fora(tabs, cand, k_wm=3, k_ad=4, forcar=("prox_p",), meta_seguro=0.05, meta_alarme=0.5, garantia=True,
+                   n_boot=1000, log=print):
     """Para cada rede ALVO: os sistemas são aprendidos nas OUTRAS redes e aplicados no alvo.
     O teste de cada rede é dividido em duas metades por lesão: aprende numa metade e avalia na outra (e troca),
     então nenhuma imagem é usada para aprender e avaliar ao mesmo tempo.
     Duas famílias fuzzy, cada uma em tipo 1 e tipo 2: Wang-Mendel (regras com k_wm condições) e fuzzy aditivo
     (regras de uma condição somadas, k_ad features, o mesmo conjunto da regressão logística e do boosting).
-    'Termos no alvo' e 'alvo no envelope' usam só as features do alvo, nunca os rótulos dele."""
+    'Termos no alvo' e 'alvo no envelope' usam só as features do alvo, nunca os rótulos dele.
+    Zonas (tipo 1 e tipo 2 transferidos): limiares escolhidos nas redes de ORIGEM para que, com 95% de confiança,
+    o erro no 'seguro' fique ≤ meta_seguro e no 'alarme' ≥ meta_alarme; o que sobra é 'incerto'."""
     from sklearn.ensemble import HistGradientBoostingClassifier
     nomes = list(tabs)
-    linhas, zonas, regras, fous, preds = [], [], {}, {}, {}
+    linhas, zonas, classif, regras, fous, preds = [], [], [], {}, {}, {}
     for alvo in nomes:
         fontes = [s for s in nomes if s != alvo]
         T = tabs[alvo]; n = len(T)
         nota = {m: np.full(n, np.nan) for m in METODOS}
-        iv = {fam: [np.full(n, np.nan) for _ in range(3)] for fam in FAMILIAS}      # s_inf, s_sup, tau
+        iv = {fam: [np.full(n, np.nan) for _ in range(2)] for fam in FAMILIAS}      # s_inf, s_sup (tipo 2)
+        zt = {f"{fam} tipo {t}": np.full(n, "", dtype=object) for fam in FAMILIAS for t in (1, 2)}
         escolhas = []
         for f in (0, 1):
             te = (T.metade == 1 - f).values
@@ -326,7 +372,10 @@ def deixa_uma_fora(tabs, cand, k_wm=3, k_ad=5, forcar=("prox_p",), q_alarme=0.2,
                 nota[f"{fam}: tipo 1 dentro (referência)"][te] = Cls().fit(pert_t1(Xin, Ca), alvo_tr.erro.values, feats).nota_t1(pert_t1(Xa, Ca))
                 C1 = centros(Xs)
                 m1 = Cls().fit(pert_t1(Xs, C1), ys, feats, gs)
-                nota[f"{fam}: tipo 1 transferido"][te] = m1.nota_t1(pert_t1(Xa, C1))
+                nota[f"{fam}: tipo 1 transferido"][te] = s1 = m1.nota_t1(pert_t1(Xa, C1))
+                s1_src = m1.nota_t1(pert_t1(Xs, C1))
+                zt[f"{fam} tipo 1"][te] = zona(s1, s1, limiar_seguro(s1_src, ys, meta_seguro, garantia),
+                                               limiar_alarme(s1_src, ys, meta_alarme, garantia))
                 nota[f"{fam}: tipo 1 transferido + termos no alvo"][te] = m1.nota_t1(pert_t1(Xa, centros(Xa)))
                 lista_C = [centros(fonte_tr[fonte_tr._g == i][feats].values) for i in range(len(fontes))]
                 Mi, Ms = pert_t2(Xs, lista_C)
@@ -335,7 +384,9 @@ def deixa_uma_fora(tabs, cand, k_wm=3, k_ad=5, forcar=("prox_p",), q_alarme=0.2,
                 nota[f"{fam}: tipo 2 transferido"][te] = s_m
                 nota[f"{fam}: tipo 2 transferido + alvo no envelope"][te] = m2.nota_t2(*pert_t2(Xa, lista_C + [centros(Xa)]))[2]
                 iv[fam][0][te], iv[fam][1][te] = s_i, s_s
-                iv[fam][2][te] = np.quantile(m2.nota_t2(Mi, Ms)[2], 1 - q_alarme)      # limiar escolhido nas FONTES
+                si_src, ss_src, _ = m2.nota_t2(Mi, Ms)                                # limiares escolhidos nas FONTES
+                zt[f"{fam} tipo 2"][te] = zona(s_i, s_s, limiar_seguro(ss_src, ys, meta_seguro, garantia),
+                                               limiar_alarme(si_src, ys, meta_alarme, garantia))
                 if f == 0:
                     regras[(alvo, fam)] = m2.tabela()
                     fous[(alvo, fam)] = tabela_fou(lista_C, feats, fontes)
@@ -349,17 +400,18 @@ def deixa_uma_fora(tabs, cand, k_wm=3, k_ad=5, forcar=("prox_p",), q_alarme=0.2,
                 d["ganho de AUROC sobre o tipo 1 transferido"] = auc(nota[m]) - auc(ref)
                 d["IC 95% do ganho"] = f"[{lo:+.3f}, {hi:+.3f}]"
             linhas.append(d)
-        for fam in FAMILIAS:
-            zonas += _zonas(alvo, f"{fam} tipo 2", y, *iv[fam])
+        for sis, z in zt.items():
+            zonas += _zonas(alvo, sis, y, z); classif.extend(classificacao(alvo, sis, y, z))
         p = T[["image_id", "metade", "erro", "p", "prox_p"]].copy()
         for m in METODOS:
             p[m] = nota[m]
         for fam in FAMILIAS:
             p[f"{fam} t2 inf"], p[f"{fam} t2 sup"] = iv[fam][0], iv[fam][1]
             p[f"{fam} t2 largura"] = iv[fam][1] - iv[fam][0]
+            p[f"{fam} zona tipo 1"], p[f"{fam} zona tipo 2"] = zt[f"{fam} tipo 1"], zt[f"{fam} tipo 2"]
         preds[alvo] = p
         log(f"alvo {alvo}: WM {escolhas[0][0]} | aditivo/LR {escolhas[0][1]}\n   " + " | ".join(
             f"{m.replace('transferido', 'transf.')}: {auc(nota[m]):.3f}" for m in
             ["Só P", "Regressão logística transferida", "Wang-Mendel: tipo 1 transferido", "Wang-Mendel: tipo 2 transferido",
              "Fuzzy aditivo: tipo 1 transferido", "Fuzzy aditivo: tipo 2 transferido"]))
-    return pd.DataFrame(linhas), pd.DataFrame(zonas), regras, fous, preds
+    return pd.DataFrame(linhas), pd.DataFrame(zonas), pd.DataFrame(classif), regras, fous, preds

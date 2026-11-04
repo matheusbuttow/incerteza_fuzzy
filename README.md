@@ -38,6 +38,18 @@ Usa dados falsos e 1 época, só para conferir que tudo roda na sua máquina. Os
 
 ## 4. Rodar de verdade
 
+**Tudo de uma vez (tipo 1 + tipo 2)** — pipeline principal, relatório e o tipo 1 × tipo 2 entre arquiteturas:
+
+```bash
+nohup bash rodar_tudo.sh > log_tudo.txt 2>&1 &                      # máquina nova
+nohup bash rodar_tudo.sh --refazer avaliacao > log_tudo.txt 2>&1 &  # redes já treinadas em resultados/
+tail -f log_tudo.txt                                                # acompanhar (Ctrl+C só sai da visualização)
+```
+
+No fim, mande `resultados/relatorio.xlsx` e `resultados_tipo2/resultados_tipo2.xlsx`.
+
+Ou por partes:
+
 ```bash
 python rodar.py                 # tudo: 7 experimentos × 3 sementes
 python relatorio.py             # junta tudo em resultados/relatorio.html e relatorio.xlsx
@@ -91,6 +103,8 @@ Abas principais do `relatorio.xlsx`:
 | `estabilidade_regras` | as regras se repetem quando os dados mudam? |
 | `diagnostico_features` | o que cada feature traz de novo em relação a P |
 | `regras_wang_mendel`, `regras_fuzzy_aditivo` | as regras aprendidas |
+| `zonas` | cada resposta da rede classificada em SEGURO / INCERTO / ALARME (fuzzy aditivo × Só P): % das imagens e taxa de erro em cada zona. Limiares escolhidos no treino de cada dobra: seguro = erro ≤ 1/3 do erro da rede, alarme = erro ≥ 50%, com 95% de confiança (`config.ZONA_*`) |
+| `selecao_features`, `correlacao_features` | quantas vezes cada característica entrou no modelo e a correlação entre elas |
 | `extra_dx_type`, `extra_multifotos`, `extra_cifar10h` | validações com incerteza real (veja abaixo) |
 
 ## 6. O que é comparado
