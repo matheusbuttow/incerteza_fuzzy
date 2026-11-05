@@ -112,7 +112,9 @@ def ler_ou_carregar(cfg, nome, rede, info, meta, cache, log=print):
     arq = Path(cfg.saida) / f"features_{nome}.csv"
     if arq.exists():
         log(f"{nome}: features carregadas de {arq.name}")
-        return pd.read_csv(arq)
+        tab = pd.read_csv(arq)
+        tab["prox_p"] = lg.proximidade(tab["p"], info["limiar"])      # recalcula com a fórmula corrigida (por lado)
+        return tab
     dev = _dev(); t0 = time.time()
     tr = np.where(meta.split == "treino")[0]
     ref = np.random.default_rng(cfg.seed).choice(tr, size=min(cfg.n_ref, len(tr)), replace=False)

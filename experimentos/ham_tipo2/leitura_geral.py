@@ -46,6 +46,14 @@ def reduzir(o):
     return o.flatten(1).float()
 
 
+
+def proximidade(P, limiar):
+    """Quão perto P está do limiar, de 0 (certeza) a 1 (em cima do limiar), medido em CADA LADO separadamente:
+    P/limiar abaixo dele e (1−P)/(1−limiar) acima. Assim um limiar baixo (ex.: 0,12) não faz toda resposta
+    'benigna' parecer duvidosa. Igual ao `prox_p` do pipeline principal."""
+    P = np.asarray(P, float)
+    return np.where(P < limiar, P / limiar, (1 - P) / (1 - limiar))
+
 class LeitorGeral:
     def __init__(self, rede, limiar=0.5, k_vizinhos=15, bs=64):
         self.rede, self.limiar, self.k, self.bs = rede, limiar, k_vizinhos, bs
@@ -125,7 +133,7 @@ class LeitorGeral:
         idx_v, S = self._knn(self._unit(A[-1]))
         f["vizinhos_discordam"] = (self.banco_dec[idx_v] != final[:, None]).mean(1)
         f["dist_vizinhos"] = (1 - np.take_along_axis(S, idx_v, 1)).mean(1) / self.dist_ref
-        f["prox_p"] = 1 - np.abs(P - self.limiar) / max(self.limiar, 1 - self.limiar)
+        f["prox_p"] = proximidade(P, self.limiar)
         # trajetória em profundidade relativa (0 = primeiro bloco, 1 = último), comparável entre redes
         x_rel, grade = np.linspace(0, 1, B), np.linspace(0, 1, N_REL)
         conf_rel = np.stack([np.interp(grade, x_rel, c) for c in conf])
