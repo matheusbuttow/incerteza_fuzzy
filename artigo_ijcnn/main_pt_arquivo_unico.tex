@@ -220,18 +220,14 @@ que Lê o Comportamento Interno de Redes Neurais para Detectar seus Erros}
 \maketitle
 
 \begin{abstract}
-Redes neurais profundas às vezes \emph{alucinam}: respondem algo errado com a mesma segurança com que respondem algo certo, e a própria
-confiança da rede não basta para perceber. Propomos um sistema fuzzy que detecta esses momentos observando o comportamento interno de uma
-rede já treinada e congelada, sem retreiná-la. Quatro tipos de sinal alimentam o sistema: a resposta da rede, o caminho até ela (sondas
-lineares em cada bloco revelam se a rede mudou de ideia), a estabilidade (se a resposta muda quando a imagem é espelhada) e a familiaridade
-(se os vizinhos de treino receberam a mesma resposta). O sistema é um modelo Takagi--Sugeno de ordem zero com regras de um único antecedente
-e saída logística: cada regra tem forma linguística, como ``SE a concordância no fim da rede é \term{baixa} ENTÃO o risco de alucinação
-aumenta'', e um peso aprendido dos dados. Em oito cenários com cinco arquiteturas e cinco bases de dados (CIFAR-10 com e sem 30\% de ruído
-nos rótulos, CIFAR-100, SVHN, MNIST e HAM10000), avaliados nas mesmas redes, nas mesmas imagens e nas mesmas partições que doze detectores
-concorrentes, o sistema obtém a maior AUROC média, ou empata com a maior, em sete cenários e fica a 0,004 do melhor no restante.
-O ganho sobre a confiança da rede é maior justamente quando ela alucina mais: de 0,797 para 0,903 no CIFAR-10 com ruído nos rótulos.
-Em relação ao meta-modelo de sondas de Chen et al., é significativamente melhor em 18 de 26 rodadas e nunca pior, com regras estáveis entre
-reamostragens.
+Redes neurais frequentemente erram com alta confiança, e a probabilidade de saída não revela esses erros. Propomos um sistema fuzzy que lê
+o comportamento interno de uma rede congelada (a opinião de cada bloco, a estabilidade diante de transformações da imagem e a semelhança
+com o treino) e indica, com regras legíveis, quando a resposta provavelmente está errada. Em sete cenários com quatro arquiteturas, o
+sistema obtém a maior AUROC, ou empata com a maior, em seis, e supera a leitura interna de Chen et al.\ em 17 de 23 rodadas, sem nenhuma
+perda significativa. O ganho se concentra nos erros confiantes: entre as imagens em que a rede está mais segura, a confiança do softmax não
+distingue erro de acerto (AUROC 0,51 no CIFAR-10 com rótulos ruidosos), enquanto o sistema atinge 0,85. Em lesões de pele (HAM10000), onde
+os erros ocorrem principalmente na faixa de dúvida, o ganho é menor, o que delimita quando a leitura interna é útil. O sistema ainda
+classifica cada resposta em seguro, incerto ou alarme, com garantia sobre a taxa de erro na zona segura.
 \end{abstract}
 
 \begin{IEEEkeywords}
