@@ -182,6 +182,16 @@ Experimentos (cada um reproduz o cenário de um artigo):
 | `mostrar_pertinencias.py` | (`--todos` para todos os experimentos) desenha as funções de pertinência do fuzzy aditivo final, o peso de cada regra e os pontos de risco por valor (pertinencias.png) |
 | `tabelas_latex.py` | gera as tabelas do artigo em LaTeX para o Overleaf (tabelas_pt.tex e tabelas_en.tex) a partir do relatorio.xlsx |
 
+## 8b. Erros confiantes (`analise_confiantes.py`)
+
+Depois da rodada, sem GPU: "a rede está muito segura, mas errou — dá para perceber?". O p só FILTRA as imagens mais
+confiantes (`--frac`, padrão 30%); dentro delas, o fuzzy aditivo usa só as características internas (sem p).
+Compara com a versão com p e com todos os outros métodos restritos ao mesmo grupo.
+
+```bash
+python analise_confiantes.py --frac 0.2 0.3 0.5     # → resultados/confiantes.xlsx
+```
+
 ## 9. Experimentos extras (`experimentos/`)
 
 Pasta separada, com notebook Jupyter **e** script Python para cada experimento:
