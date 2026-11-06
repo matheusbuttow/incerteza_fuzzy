@@ -40,14 +40,6 @@ que Lê o Comportamento Interno de Redes Neurais para Detectar seus Erros}
 \maketitle
 
 \begin{abstract}
-Redes neurais frequentemente erram com alta confiança, e a probabilidade de saída não revela esses erros. Propomos um sistema fuzzy que lê
-o comportamento interno de uma rede congelada (a opinião de cada bloco, a estabilidade diante de transformações da imagem e a semelhança
-com o treino) e indica, com regras legíveis, quando a resposta provavelmente está errada. Em sete cenários com quatro arquiteturas, o
-sistema obtém a maior AUROC, ou empata com a maior, em seis, e supera a leitura interna de Chen et al.\ em 17 de 23 rodadas, sem nenhuma
-perda significativa. O ganho se concentra nos erros confiantes: entre as imagens em que a rede está mais segura, a confiança do softmax não
-distingue erro de acerto (AUROC 0,51 no CIFAR-10 com rótulos ruidosos), enquanto o sistema atinge 0,85. Em lesões de pele (HAM10000), onde
-os erros ocorrem principalmente na faixa de dúvida, o ganho é menor, o que delimita quando a leitura interna é útil. O sistema ainda
-classifica cada resposta em seguro, incerto ou alarme, com garantia sobre a taxa de erro na zona segura.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -105,9 +97,9 @@ ligada à dificuldade do exemplo~\cite{baldock2021}. Esses trabalhos mostram que
 
 \subsection{Sistemas fuzzy e incerteza de redes}
 Em revisão da literatura sobre lógica fuzzy e incerteza de redes profundas, encontramos três formas de uso: dentro da rede (camadas, pooling ou
-neurônios fuzzy, muitas vezes tipo 2), sobre a saída (regras aplicadas às probabilidades finais) e na agregação de vários modelos (por
+neurônios fuzzy), sobre a saída (regras aplicadas às probabilidades finais) e na agregação de vários modelos (por
 exemplo, com a integral de Choquet). Sistemas de regras fuzzy também já foram usados para explicar redes a partir de valores de
-atribuição~\cite{aghaeipoor2023}. O aprendizado de regras a partir de dados remonta a Wang e Mendel~\cite{wangmendel1992}, e os modelos
+atribuição~\cite{aghaeipoor2023}. Os modelos
 Takagi--Sugeno~\cite{takagi1985} combinam antecedentes linguísticos com consequentes numéricos. Não encontramos trabalhos que apliquem regras
 fuzzy ao comportamento interno de uma rede já treinada para detectar quando ela erra; é essa lacuna que este artigo ocupa.
 
@@ -485,8 +477,7 @@ Por fim, o sistema foi treinado e testado na mesma rede; se as regras valem para
 Mostramos que um sistema fuzzy simples, com uma dúzia de regras sobre o comportamento interno da rede, detecta quando uma rede congelada
 alucina tão bem quanto os melhores detectores caixa-preta, e melhor que a confiança da própria rede quando essa confiança mais engana.
 Cada alerta vem com as regras que o dispararam, o que permite a quem usa a rede entender por que desconfiar dela.
-Como trabalho futuro, vamos estudar se as regras se transferem entre arquiteturas, usando pertinências fuzzy tipo 2 intervalares para
-representar a discordância entre redes, e estender o sistema a outras tarefas em que redes alucinam.
+Como trabalho futuro, vamos estudar se as regras se transferem entre arquiteturas e estender o sistema a outras tarefas em que redes alucinam.
 
 % Duplo-cego: sem agradecimentos na submissão.
 % \section*{Agradecimentos}
