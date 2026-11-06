@@ -21,7 +21,7 @@ Critérios de inclusão e exclusão. Quem fez a triagem.]
 
 \begin{table}[t]
 \centering
-\caption{As quatro etapas de refinamento da busca.}
+\caption{As quatro etapas de refinamento da busca no IEEE Xplore (campo \textit{Abstract}).}
 \label{tab:etapas_revisao}
 \footnotesize
 \setlength{\tabcolsep}{3pt}
@@ -29,10 +29,10 @@ Critérios de inclusão e exclusão. Quem fez a triagem.]
 \toprule
 Etapa & Critério acrescentado & Artigos \\
 \midrule
-1 & [string inicial, ex.: fuzzy AND neural network AND uncertainty] & N1 \\
-2 & [restrição 2] & N2 \\
-3 & [restrição 3] & N3 \\
-4 & [restrição 4 / leitura completa] & N4 \\
+1 & incerteza ou confiança + redes neurais (CNN, \textit{deep learning}) & 19.738 \\
+2 & + fuzzy & 1.590 \\
+3 & + erro com alta confiança (alucinação, \textit{overconfidence}, \textit{misclassification}) & 9 \\
+4 & + rótulos ruidosos (\textit{noisy labels}, \textit{label noise}) & 0 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -44,10 +44,10 @@ Etapa & Critério acrescentado & Artigos \\
   \def\faixa#1#2#3#4#5{%  #1 nível (0 = topo)  #2 meia-largura em cima  #3 meia-largura embaixo  #4 cor  #5 texto
     \fill[#4] (-#2,-#1) -- (#2,-#1) -- (#3,-#1-1) -- (-#3,-#1-1) -- cycle;
     \node[align=center] at (0,-#1-0.5) {#5};}
-  \faixa{0}{4.2}{3.4}{blue!45}{Etapa 1: [critério] \quad $n = $ N1}
-  \faixa{1}{3.4}{2.6}{blue!35}{Etapa 2: [critério] \quad $n = $ N2}
-  \faixa{2}{2.6}{1.8}{blue!25}{Etapa 3: [critério] \quad $n = $ N3}
-  \faixa{3}{1.8}{1.0}{blue!15}{Etapa 4: $n = $ N4}
+  \faixa{0}{4.2}{3.4}{blue!45}{Etapa 1 \quad $n = 19.738$}
+  \faixa{1}{3.4}{2.6}{blue!35}{Etapa 2 \quad $n = 1.590$}
+  \faixa{2}{2.6}{1.8}{blue!25}{Etapa 3 \quad $n = 9$}
+  \faixa{3}{1.8}{1.0}{blue!15}{Etapa 4 \quad $n = 0$}
 \end{tikzpicture}
 \caption{Refinamento da busca em quatro etapas. [Uma frase sua sobre o que sobra no fim.]}
 \label{fig:piramide}
