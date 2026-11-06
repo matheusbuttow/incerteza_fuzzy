@@ -173,6 +173,26 @@ def preparar_teste_rapido():
                 linhas.append({"lesion_id": f"HAM_{les:07d}", "image_id": f"ISIC_{k:07d}", "dx": d,
                                "dx_type": r.choice(["histo", "consensus", "follow_up"])}); k += 1
         pd.DataFrame(linhas).to_csv(C.HAM_DIR / "HAM10000_metadata.csv", index=False)
+    C.ANIMAL_DIR = C.SAIDA.parent / "dados_falsos" / "animal10n"
+    C.CHAOYANG_DIR = C.SAIDA.parent / "dados_falsos" / "chaoyang"
+    r = np.random.default_rng(1)
+    if not C.ANIMAL_DIR.exists():
+        for parte, n in (("training", 600), ("testing", 200)):
+            (C.ANIMAL_DIR / parte).mkdir(parents=True)
+            for k in range(n):
+                c = k % 10
+                Image.fromarray(np.clip(r.normal(40 + 20 * c, 50, (64, 64, 3)), 0, 255).astype(np.uint8)) \
+                     .save(C.ANIMAL_DIR / parte / f"{c}_{k:05d}.jpg")
+    if not C.CHAOYANG_DIR.exists():
+        import json
+        for parte, n in (("train", 400), ("test", 160)):
+            (C.CHAOYANG_DIR / parte).mkdir(parents=True); lista = []
+            for k in range(n):
+                c = k % 4
+                Image.fromarray(np.clip(r.normal(60 + 40 * c, 50, (64, 64, 3)), 0, 255).astype(np.uint8)) \
+                     .save(C.CHAOYANG_DIR / parte / f"{k:05d}.jpg")
+                lista.append({"name": f"{parte}/{k:05d}.jpg", "label": c})
+            json.dump(lista, open(C.CHAOYANG_DIR / f"{parte}.json", "w"))
 
 
 if __name__ == "__main__":

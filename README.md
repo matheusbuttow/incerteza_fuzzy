@@ -1,5 +1,12 @@
 # Incerteza da rede lida por dentro + regras fuzzy
 
+> **Seleção de datasets do artigo (nov/2026):** referência sem ruído — CIFAR-10 (ResNet-32 e VGG-16), CIFAR-100 (VGG-16), MNIST (MLP);
+> ruído REAL nos rótulos de treino — CIFAR-10N (~9%, ~17%, ~40%), CIFAR-100N (~40%), ANIMAL-10N (~8%, web) e Chaoyang
+> (histopatologia, patologistas discordam). HAM10000, ruído sintético e SVHN continuam no código, fora do padrão
+> (rodam com `--exp`; o relatório os inclui com `--todos`). Dados à mão: `dados/animal10n/` (pastas training/ e testing/)
+> e `dados/chaoyang/` (train.json, test.json e imagens); o resto é baixado sozinho.
+
+
 Código completo do trabalho: treina as redes, lê cada rede por dentro, compara o nosso método (fuzzy aditivo; o Wang-Mendel roda só para consulta interna, fora do artigo) com todos os métodos de outros artigos nas **mesmas imagens**, e gera planilha, gráficos e uma página HTML para analisar.
 
 ## 1. Instalar

@@ -35,12 +35,13 @@ class Rede(nn.Module):
 
 
 class EffNetB0(Rede):
-    def __init__(self, pretreinada=True):
+    def __init__(self, pretreinada=True, n_classes=2):
         super().__init__()
         from torchvision import models
         m = models.efficientnet_b0(weights="IMAGENET1K_V1" if pretreinada else None)
         self.features, self.pool = m.features, m.avgpool
-        self.cabeca = nn.Sequential(nn.Dropout(0.4), nn.Linear(1280, 256), nn.ReLU(), nn.Dropout(0.3), nn.Linear(256, 1))
+        saida = 1 if n_classes == 2 else n_classes                    # binário: uma saída (sigmoide); senão, softmax
+        self.cabeca = nn.Sequential(nn.Dropout(0.4), nn.Linear(1280, 256), nn.ReLU(), nn.Dropout(0.3), nn.Linear(256, saida))
         sub = [self.features[0]]
         for est in list(self.features.children())[1:-1]:
             sub += list(est.children())
@@ -95,7 +96,7 @@ class VGG16(Rede):
         self.blocos = list(self.conv)                                  # 13 blocos
 
     def corpo(self, x):
-        return self.conv(x).flatten(1)
+        return F.adaptive_avg_pool2d(self.conv(x), 1).flatten(1)        # 32×32 → 1×1 (igual a antes); 64×64 → média de 2×2
 
 
 class CNNPequena(Rede):
@@ -125,7 +126,7 @@ class MLP(Rede):
 
 def criar(arq, n_classes):
     if arq == "effnet_b0":
-        return EffNetB0(pretreinada=not C.TESTE_RAPIDO)
+        return EffNetB0(pretreinada=not C.TESTE_RAPIDO, n_classes=n_classes)
     return {"resnet32": lambda: ResNet32(n_classes), "vgg16": lambda: VGG16(n_classes),
             "cnn": lambda: CNNPequena(n_classes), "mlp": lambda: MLP(n_classes)}[arq]()
 
@@ -144,7 +145,7 @@ def treinar(rede, conj, arq, semente, disp, log=print):
     """Treina a rede só no treino. No binário (HAM), escolhe a melhor época e o limiar (Youden) na validação."""
     from dados import carregador
     torch.manual_seed(semente); np.random.seed(semente)
-    epocas = 1 if C.TESTE_RAPIDO else C.EPOCAS[arq]
+    epocas = 1 if C.TESTE_RAPIDO else (getattr(conj, "epocas", None) or C.EPOCAS[arq])
     lote = C.LOTE[arq]
     dl = carregador(conj.treino, lote, embaralhar=True)
     rede.to(disp)
@@ -177,8 +178,9 @@ def treinar(rede, conj, arq, semente, disp, log=print):
             soma += loss.item() * len(y); n += len(y)
         msg = f"  época {ep + 1:3d}/{epocas} | perda {soma / n:.4f}"
         if conj.val is not None:
-            auc = roc_auc_score(conj.y_val, prever(rede, carregador(conj.val, lote), disp=disp)[:, 1])
-            msg += f" | AUROC validação {auc:.3f}"
+            pv = prever(rede, carregador(conj.val, lote), disp=disp)
+            auc = roc_auc_score(conj.y_val, pv[:, 1]) if conj.binario else float((pv.argmax(1) == conj.y_val).mean())
+            msg += f" | {'AUROC' if conj.binario else 'acurácia'} validação {auc:.3f}"
             if auc > melhor:
                 melhor, estado = auc, copy.deepcopy(rede.state_dict())
         log(msg)

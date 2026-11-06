@@ -313,10 +313,23 @@ def html(arq, tabelas, figs):
     arq.write_text(f"<!doctype html><meta charset='utf-8'><title>Relatório de incerteza</title><style>{css}</style>" + "\n".join(corpo), encoding="utf-8")
 
 
+def so_selecao(R, experimentos):
+    """Mantém só os experimentos escolhidos (padrão: config.EXPERIMENTOS_PADRAO, a seleção do artigo)."""
+    return {k: (v[v["experimento"].isin(experimentos)].reset_index(drop=True)
+                if isinstance(v, pd.DataFrame) and "experimento" in v.columns else v) for k, v in R.items()}
+
+
 if __name__ == "__main__":
-    ap = argparse.ArgumentParser(); ap.add_argument("--teste-rapido", action="store_true"); a = ap.parse_args()
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--teste-rapido", action="store_true")
+    ap.add_argument("--todos", action="store_true", help="inclui também os experimentos fora da seleção (HAM10000, ruído sintético...)")
+    a = ap.parse_args()
     saida = C.SAIDA.parent / "resultados_teste_rapido" if a.teste_rapido else C.SAIDA
-    R = ler_tudo(saida); ag = agregar(R["metricas"])
+    R = ler_tudo(saida)
+    if not a.todos:
+        R = so_selecao(R, C.EXPERIMENTOS_PADRAO)
+        print("Experimentos no relatório:", ", ".join(sorted(R["metricas"]["experimento"].unique())), "(use --todos para incluir os outros)")
+    ag = agregar(R["metricas"])
     pasta = saida / "figuras"; pasta.mkdir(parents=True, exist_ok=True)
     figs = graficos(R, ag, pasta, saida)
     geral = tabela_geral(ag).reset_index()

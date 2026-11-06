@@ -25,13 +25,14 @@ NORMAS = {"cifar10": ((0.4914, 0.4822, 0.4465), (0.247, 0.243, 0.261)),
           "svhn": ((0.438, 0.444, 0.473), (0.198, 0.201, 0.197)),
           "mnist": ((0.1307,), (0.3081,)),
           "ham10000": ((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))}
-N_CLASSES = {"cifar10": 10, "cifar100": 100, "svhn": 10, "mnist": 10, "ham10000": 2}
+NORMAS["animal10n"] = NORMAS["chaoyang"] = ((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))   # médias do ImageNet
+N_CLASSES = {"cifar10": 10, "cifar100": 100, "svhn": 10, "mnist": 10, "ham10000": 2, "animal10n": 10, "chaoyang": 4}
 
 
 # ----------------------------------------------------------------------------- vistas (TTA), aplicadas no tensor já normalizado
 def _desloca(dx, dy):
     def f(x):
-        p = 2
+        p = max(2, abs(dx), abs(dy))          # a borda precisa cobrir o deslocamento
         x = F.pad(x, (p, p, p, p), mode="replicate")
         h, w = x.shape[2] - 2 * p, x.shape[3] - 2 * p
         return x[:, :, p + dy: p + dy + h, p + dx: p + dx + w]
@@ -47,6 +48,9 @@ VISTAS = {
     "mnist": {"original": lambda x: x, "desloca_dir": _desloca(1, 0), "desloca_esq": _desloca(-1, 0), "desloca_baixo": _desloca(0, 1)},
 }
 VISTAS["cifar100"] = VISTAS["cifar10"]
+VISTAS["animal10n"] = {"original": lambda x: x, "espelho_h": lambda x: torch.flip(x, [3]),
+                       "desloca_+4": _desloca(4, 4), "desloca_-4": _desloca(-4, -4)}      # 64×64: deslocamento proporcional
+VISTAS["chaoyang"] = VISTAS["ham10000"]                                                  # lâmina: espelhos e giro não mudam a classe
 
 
 # ----------------------------------------------------------------------------- utilidades
@@ -66,7 +70,7 @@ class ComRotulos(Dataset):
 
 
 class Imagens(Dataset):
-    """Imagens em disco (HAM10000)."""
+    """Imagens em disco (HAM10000, ANIMAL-10N, Chaoyang)."""
 
     def __init__(self, caminhos, rotulos, tfm):
         self.c, self.y, self.t = list(caminhos), np.asarray(rotulos), tfm
@@ -92,6 +96,7 @@ class Conjunto:
     meta_teste: pd.DataFrame = None
     vistas: dict = field(default_factory=dict)
     extras: dict = field(default_factory=dict)
+    epocas: int = None              # se o experimento pedir um número de épocas próprio
 
     @property
     def binario(self):
@@ -214,9 +219,78 @@ def _ham(semente, n_lesoes):
                                        [["image_id", "lesion_id", "dx", "dx_type", "is_malignant", "split"]]})
 
 
+def _pastas_imagens(raiz, nome_ds, ajuda):
+    if not Path(raiz).exists():
+        raise FileNotFoundError(f"{nome_ds}: não achei {raiz}/. {ajuda}")
+
+
+def _animal10n(semente):
+    """ANIMAL-10N (Song et al., ICML 2019): 50.000 imagens de treino com ~8% de rótulos errados (vindos da web)
+    e 5.000 de teste verificadas. Arquivos "<classe>_<n>.jpg" dentro de pastas de treino e de teste."""
+    raiz = C.ANIMAL_DIR
+    _pastas_imagens(raiz, "ANIMAL-10N", "Descompacte lá o arquivo do dataset (pastas training/ e testing/).")
+    arqs = [p for p in Path(raiz).rglob("*") if p.suffix.lower() in (".jpg", ".jpeg", ".png")]
+    def split(p):
+        s = "/".join(p.parts).lower()
+        return "teste" if "test" in s else ("treino" if "train" in s else None)
+    tab = pd.DataFrame({"image_path": [str(p) for p in arqs], "split": [split(p) for p in arqs],
+                        "rotulo": [int(p.stem.split("_")[0]) for p in arqs]}).dropna()
+    tr, te = tab[tab.split == "treino"].reset_index(drop=True), tab[tab.split == "teste"].reset_index(drop=True)
+    if not C.TESTE_RAPIDO and (len(tr) < 45000 or len(te) < 4500 or tab.rotulo.nunique() != 10):
+        raise ValueError(f"ANIMAL-10N: esperava ~50.000 treino / 5.000 teste / 10 classes; achei {len(tr)} / {len(te)} / "
+                         f"{tab.rotulo.nunique()}. Confira o unzip em {raiz}/.")
+    media, desvio = NORMAS["animal10n"]; norm = transforms.Normalize(media, desvio)
+    simples = transforms.Compose([transforms.ToTensor(), norm])
+    aug = transforms.Compose([transforms.RandomCrop(64, padding=8), transforms.RandomHorizontalFlip(), transforms.ToTensor(), norm])
+    rng = np.random.default_rng(semente)
+    ref = rng.choice(len(tr), size=min(C.N_REF, len(tr)), replace=False)
+    refs = tr.iloc[ref].reset_index(drop=True)
+    meta = pd.DataFrame({"indice": np.arange(len(te)), "rotulo": te.rotulo.values})
+    return Conjunto("animal10n", 10, Imagens(tr.image_path, tr.rotulo, aug), Imagens(refs.image_path, refs.rotulo, simples),
+                    Imagens(te.image_path, te.rotulo, simples), y_ref=refs.rotulo.values, y_teste=te.rotulo.values,
+                    meta_teste=meta, vistas=VISTAS["animal10n"], epocas=C.EXPERIMENTOS["animal10n"].get("epocas"))
+
+
+def _chaoyang(semente):
+    """Chaoyang (Zhu et al., IEEE TMI 2022): histopatologia colorretal, 4 classes (normal, serrada, adenocarcinoma, adenoma).
+    Rótulos de treino com ruído (discordância entre patologistas); teste com rótulos de consenso.
+    Lê train.json e test.json: listas de {"name": caminho relativo ao json, "label": classe}."""
+    import json
+    from sklearn.model_selection import train_test_split
+    raiz = C.CHAOYANG_DIR
+    _pastas_imagens(raiz, "Chaoyang", "Descompacte lá o dataset (com train.json, test.json e as imagens).")
+    def ler(nome):
+        js = next(iter(Path(raiz).rglob(nome)), None)
+        if js is None:
+            raise FileNotFoundError(f"Chaoyang: não achei {nome} dentro de {raiz}/.")
+        t = pd.DataFrame(json.load(open(js)))
+        t["image_path"] = [str(js.parent / n) for n in t["name"]]
+        return t.rename(columns={"label": "rotulo"})[["image_path", "rotulo"]]
+    tr_all, te = ler("train.json"), ler("test.json")
+    tr, va = train_test_split(tr_all, test_size=0.1, stratify=tr_all.rotulo, random_state=semente)   # validação: escolher a época
+    tr, va, te = [x.reset_index(drop=True) for x in (tr, va, te)]
+    media, desvio = NORMAS["chaoyang"]; norm = transforms.Normalize(media, desvio)
+    T = 64 if C.TESTE_RAPIDO else 224
+    simples = transforms.Compose([transforms.Resize((T, T)), transforms.ToTensor(), norm])
+    aug = transforms.Compose([transforms.Resize((T, T)), transforms.RandomHorizontalFlip(), transforms.RandomVerticalFlip(),
+                              transforms.RandomRotation(20), transforms.ColorJitter(0.1, 0.1, 0.1), transforms.ToTensor(), norm])
+    ref = tr.sample(n=min(C.N_REF, len(tr)), random_state=semente).reset_index(drop=True)
+    meta = pd.DataFrame({"indice": np.arange(len(te)), "rotulo": te.rotulo.values})
+    return Conjunto("chaoyang", 4, Imagens(tr.image_path, tr.rotulo, aug), Imagens(ref.image_path, ref.rotulo, simples),
+                    Imagens(te.image_path, te.rotulo, simples), y_ref=ref.rotulo.values, y_teste=te.rotulo.values,
+                    val=Imagens(va.image_path, va.rotulo, simples), y_val=va.rotulo.values,
+                    meta_teste=meta, vistas=VISTAS["chaoyang"])
+
+
 def carregar(exp, semente):
     e = C.EXPERIMENTOS[exp]
-    return _ham(semente, e.get("n_lesoes", C.HAM_N_LESOES)) if e["dados"] == "ham10000" else _torchvision(e["dados"], semente, e["ruido"])
+    if e["dados"] == "ham10000":
+        return _ham(semente, e.get("n_lesoes", C.HAM_N_LESOES))
+    if e["dados"] == "animal10n":
+        return _animal10n(semente)
+    if e["dados"] == "chaoyang":
+        return _chaoyang(semente)
+    return _torchvision(e["dados"], semente, e["ruido"])
 
 
 def carregador(ds, lote, embaralhar=False):

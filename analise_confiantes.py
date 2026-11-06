@@ -98,9 +98,12 @@ def main():
     ap.add_argument("--pasta", default="resultados")
     ap.add_argument("--frac", nargs="+", type=float, default=[0.3], help="fração mais confiante do teste")
     ap.add_argument("--k", type=int, default=3, help="quantas características internas o fuzzy usa")
+    ap.add_argument("--todos", action="store_true", help="inclui experimentos fora da seleção do artigo")
     a = ap.parse_args()
     pasta = Path(a.pasta); L, S, R = [], [], []
-    rodadas = sorted(p.parent for p in pasta.glob("*/semente_*/escores.csv.gz") if (p.parent / "features.csv.gz").exists())
+    import config as C
+    rodadas = sorted(p.parent for p in pasta.glob("*/semente_*/escores.csv.gz") if (p.parent / "features.csv.gz").exists()
+                     and (a.todos or p.parent.parent.name in C.EXPERIMENTOS_PADRAO))
     if not rodadas:
         raise SystemExit(f"Nenhuma rodada completa em {pasta}/ (precisa de features.csv.gz e escores.csv.gz).")
     for frac in a.frac:

@@ -19,11 +19,16 @@ DADOS = Path("dados")                                  # CIFAR, SVHN e MNIST sã
 # Pasta que contém o HAM10000_metadata.csv. Usa a primeira que existir; para outro lugar, troque por Path("...").
 HAM_DIR = next((p for p in [Path("dados/ham10000"), Path("dados/archive")] if (p / "HAM10000_metadata.csv").exists()),
                Path("dados/ham10000"))
+ANIMAL_DIR = Path("dados/animal10n")    # ANIMAL-10N: pastas training/ e testing/ com arquivos "<classe>_<n>.jpg"
+CHAOYANG_DIR = Path("dados/chaoyang")   # Chaoyang: train.json e test.json (lista de {"name": caminho, "label": classe}) + imagens
 SAIDA = Path("resultados")
 
 # ----------------------------------------------------------------------------- o que rodar
 SEMENTES = [42, 7, 2026]                               # cada semente: novo sorteio dos dados + novo treino da rede
-EXPERIMENTOS_PADRAO = ["ham10000", "ham10000_todas", "cifar10", "cifar10_ruido30", "cifar10_vgg16", "cifar100_vgg16", "svhn", "mnist"]
+# Seleção do artigo: referência sem ruído + RUÍDO REAL nos rótulos de treino (pessoas, internet, patologistas).
+# Fora do padrão (definidos abaixo, ainda rodáveis com --exp): ham10000*, cifar10_ruido* (ruído sintético), svhn.
+EXPERIMENTOS_PADRAO = ["cifar10", "cifar10_vgg16", "cifar100_vgg16", "mnist",
+                       "cifar10n_aggre", "cifar10n_random1", "cifar10n_worst", "cifar100n", "animal10n", "chaoyang"]
 
 EXPERIMENTOS = {
     "ham10000":        dict(dados="ham10000", arq="effnet_b0", ruido=0.0, artigo="HAM10000 (mesma configuração do seu BRACIS 2025)"),
@@ -40,6 +45,10 @@ EXPERIMENTOS = {
     "cifar10n_random1": dict(dados="cifar10",  arq="resnet32", ruido="humano:random_label1", artigo="CIFAR-10N (1 pessoa, ~17%)"),
     "cifar10n_worst":   dict(dados="cifar10",  arq="resnet32", ruido="humano:worse_label",   artigo="CIFAR-10N (pior de 3, ~40%)"),
     "cifar100n":        dict(dados="cifar100", arq="vgg16",    ruido="humano:noisy_label",   artigo="CIFAR-100N (1 pessoa, ~40%)"),
+    # ruído REAL da internet: 5 pares de animais parecidos, ~8% dos rótulos de treino errados; teste verificado (Song et al., ICML 2019)
+    "animal10n":        dict(dados="animal10n", arq="vgg16",   ruido=0.0, epocas=60, artigo="ANIMAL-10N (ruído da web, ~8%)"),
+    # ruído REAL médico: histopatologia colorretal, rótulos de treino com discordância entre patologistas; teste por consenso
+    "chaoyang":         dict(dados="chaoyang", arq="effnet_b0", ruido=0.0, artigo="Chaoyang (patologistas discordam)"),
     "cifar10_vgg16":   dict(dados="cifar10",  arq="vgg16",     ruido=0.0, artigo="ConfidNet 2019 / FD-Shifts 2023"),
     "cifar100_vgg16":  dict(dados="cifar100", arq="vgg16",     ruido=0.0, artigo="ConfidNet 2019 / FD-Shifts 2023"),
     "svhn":            dict(dados="svhn",     arq="cnn",       ruido=0.0, artigo="ConfidNet 2019 / FD-Shifts 2023"),
