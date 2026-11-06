@@ -204,6 +204,15 @@ nohup bash rodar_ruido.sh rapido > log_ruido.txt 2>&1 &     # 1 semente por nív
 nohup bash rodar_ruido.sh completo > log_ruido.txt 2>&1 &   # 3 sementes
 ```
 
+**Ruído REAL (CIFAR-N):** os mesmos testes com rótulos de treino dados por pessoas (Wei et al., ICLR 2022):
+`cifar10n_aggre` (~9% errados), `cifar10n_random1` (~17%), `cifar10n_worst` (~40%) e `cifar100n` (~40%). O teste usa os rótulos
+oficiais. O arquivo de rótulos é baixado do GitHub dos autores na primeira vez (`dados/cifar-n/`).
+
+```bash
+nohup bash rodar_ruido.sh humano > log_humano.txt 2>&1 &            # 1 semente
+nohup bash rodar_ruido.sh humano-completo > log_humano.txt 2>&1 &   # 3 sementes
+```
+
 ## 8b. Erros confiantes (`analise_confiantes.py`)
 
 Depois da rodada, sem GPU: "a rede está muito segura, mas errou — dá para perceber?". O p só FILTRA as imagens mais

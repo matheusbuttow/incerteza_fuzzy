@@ -105,6 +105,28 @@ def _rotulos(ds):
     return np.array([ds[i][1] for i in range(len(ds))])
 
 
+CIFARN_URL = "https://github.com/UCSC-REAL/cifar-10-100n/raw/main/data/{}"
+CIFARN_ARQ = {"cifar10": "CIFAR-10_human.pt", "cifar100": "CIFAR-100_human.pt"}
+
+
+def _rotulos_humanos(nome, chave, y_limpo):
+    """Rótulos de treino dados por PESSOAS (CIFAR-10N / CIFAR-100N; Wei et al., ICLR 2022): os erros humanos reais.
+    chave: aggre_label (~9% errados), random_label1 (~17%), worse_label (~40%) no CIFAR-10N; noisy_label (~40%) no CIFAR-100N.
+    Baixa o arquivo do repositório dos autores na primeira vez (dados/cifar-n/)."""
+    import torch, urllib.request
+    pasta = Path(C.DADOS) / "cifar-n"; pasta.mkdir(parents=True, exist_ok=True)
+    arq = pasta / CIFARN_ARQ[nome]
+    if not arq.exists():
+        print(f"  baixando {arq.name} (rótulos humanos)...", flush=True)
+        urllib.request.urlretrieve(CIFARN_URL.format(arq.name), arq)
+    r = torch.load(arq, weights_only=False)          # dicionário de vetores numpy, do repositório oficial do CIFAR-N
+    limpo = np.asarray(r["clean_label"])
+    assert len(limpo) == len(y_limpo) and (limpo == y_limpo).all(), "a ordem do CIFAR-N não bate com a do torchvision"
+    y = np.asarray(r[chave]).astype(np.int64)
+    print(f"  CIFAR-N '{chave}': {100 * (y != limpo).mean():.1f}% dos rótulos de treino errados", flush=True)
+    return y
+
+
 def _ruido(y, frac, n_classes, rng):
     y = y.copy()
     trocar = rng.random(len(y)) < frac
@@ -141,7 +163,12 @@ def _torchvision(nome, semente, ruido):
 
     rng = np.random.default_rng(semente)
     y_tr = _rotulos(tr)
-    if ruido > 0:
+    if isinstance(ruido, str) and ruido.startswith("humano:"):       # CIFAR-N: rótulos de treino dados por pessoas
+        if not C.TESTE_RAPIDO:
+            y_tr = _rotulos_humanos(nome, ruido.split(":", 1)[1], y_tr)
+        else:                                                           # teste rápido: imita com ruído sintético
+            y_tr = _ruido(y_tr, 0.2, k, rng)
+    elif ruido > 0:
         y_tr = _ruido(y_tr, ruido, k, rng)
     y_te = _rotulos(te)
     ref = rng.choice(len(tr), size=min(C.N_REF, len(tr)), replace=False)

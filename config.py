@@ -35,6 +35,11 @@ EXPERIMENTOS = {
     "cifar10_ruido10": dict(dados="cifar10",  arq="resnet32",  ruido=0.1, artigo="curva de ruído (ResNet-32)"),
     "cifar10_ruido20": dict(dados="cifar10",  arq="resnet32",  ruido=0.2, artigo="curva de ruído (ResNet-32)"),
     "cifar10_ruido40": dict(dados="cifar10",  arq="resnet32",  ruido=0.4, artigo="curva de ruído (ResNet-32)"),
+    # ruído REAL: rótulos de treino dados por pessoas (CIFAR-10N / CIFAR-100N, Wei et al., ICLR 2022); teste com os rótulos oficiais
+    "cifar10n_aggre":   dict(dados="cifar10",  arq="resnet32", ruido="humano:aggre_label",   artigo="CIFAR-10N (voto de 3 pessoas, ~9%)"),
+    "cifar10n_random1": dict(dados="cifar10",  arq="resnet32", ruido="humano:random_label1", artigo="CIFAR-10N (1 pessoa, ~17%)"),
+    "cifar10n_worst":   dict(dados="cifar10",  arq="resnet32", ruido="humano:worse_label",   artigo="CIFAR-10N (pior de 3, ~40%)"),
+    "cifar100n":        dict(dados="cifar100", arq="vgg16",    ruido="humano:noisy_label",   artigo="CIFAR-100N (1 pessoa, ~40%)"),
     "cifar10_vgg16":   dict(dados="cifar10",  arq="vgg16",     ruido=0.0, artigo="ConfidNet 2019 / FD-Shifts 2023"),
     "cifar100_vgg16":  dict(dados="cifar100", arq="vgg16",     ruido=0.0, artigo="ConfidNet 2019 / FD-Shifts 2023"),
     "svhn":            dict(dados="svhn",     arq="cnn",       ruido=0.0, artigo="ConfidNet 2019 / FD-Shifts 2023"),
