@@ -95,13 +95,15 @@ as sondas num meta-modelo de \textit{gradient boosting} que prevê se a rede ace
 das camadas; Gorbett e Blanchard~\cite{gorbett2022} classificam a penúltima camada. A profundidade em que a predição se forma também foi
 ligada à dificuldade do exemplo~\cite{baldock2021}. Esses trabalhos mostram que o sinal interno existe, mas nenhum o expressa em regras.
 
-\subsection{Sistemas fuzzy e incerteza de redes}
-Em revisão da literatura sobre lógica fuzzy e incerteza de redes profundas, encontramos três formas de uso: dentro da rede (camadas, pooling ou
-neurônios fuzzy), sobre a saída (regras aplicadas às probabilidades finais) e na agregação de vários modelos (por
-exemplo, com a integral de Choquet). Sistemas de regras fuzzy também já foram usados para explicar redes a partir de valores de
-atribuição~\cite{aghaeipoor2023}. Os modelos
-Takagi--Sugeno~\cite{takagi1985} combinam antecedentes linguísticos com consequentes numéricos. Não encontramos trabalhos que apliquem regras
-fuzzy ao comportamento interno de uma rede já treinada para detectar quando ela erra; é essa lacuna que este artigo ocupa.
+\input{revisao_sistematica}
+% texto antigo desta subsecao (para reaproveitar, se quiser):
+% \subsection{Sistemas fuzzy e incerteza de redes}
+% Em revisão da literatura sobre lógica fuzzy e incerteza de redes profundas, encontramos três formas de uso: dentro da rede (camadas, pooling ou
+% neurônios fuzzy), sobre a saída (regras aplicadas às probabilidades finais) e na agregação de vários modelos (por
+% exemplo, com a integral de Choquet). Sistemas de regras fuzzy também já foram usados para explicar redes a partir de valores de
+% atribuição~\cite{aghaeipoor2023}. Os modelos
+% Takagi--Sugeno~\cite{takagi1985} combinam antecedentes linguísticos com consequentes numéricos. Não encontramos trabalhos que apliquem regras
+% fuzzy ao comportamento interno de uma rede já treinada para detectar quando ela erra; é essa lacuna que este artigo ocupa.
 
 % =====================================================================
 \section{O Sistema Proposto}
