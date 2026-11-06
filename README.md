@@ -194,6 +194,16 @@ nohup bash rodar_novo.sh rapido > log_novo.txt 2>&1 &     # 3 cenários × 1 sem
 nohup bash rodar_novo.sh completo > log_novo.txt 2>&1 &   # tudo
 ```
 
+## 8c. Curva de ruído (`rodar_ruido.sh`, `analise_ruido.py`)
+
+CIFAR-10 com a mesma ResNet-32 e 0%, 10%, 20%, 30% e 40% dos rótulos de treino trocados (0% e 30% já fazem parte
+da rodada principal). Mostra se o ganho do sistema cresce com o ruído, em todas as imagens e no erro confiante.
+
+```bash
+nohup bash rodar_ruido.sh rapido > log_ruido.txt 2>&1 &     # 1 semente por nível
+nohup bash rodar_ruido.sh completo > log_ruido.txt 2>&1 &   # 3 sementes
+```
+
 ## 8b. Erros confiantes (`analise_confiantes.py`)
 
 Depois da rodada, sem GPU: "a rede está muito segura, mas errou — dá para perceber?". O p só FILTRA as imagens mais

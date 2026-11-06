@@ -31,6 +31,10 @@ EXPERIMENTOS = {
                             n_lesoes=None, sementes=[42, 7, 2026, 1, 123]),   # todas as lesões, 5 sementes
     "cifar10":         dict(dados="cifar10",  arq="resnet32",  ruido=0.0, artigo="Chen et al. 2019"),
     "cifar10_ruido30": dict(dados="cifar10",  arq="resnet32",  ruido=0.3, artigo="Chen et al. 2019"),
+    # curva de ruído: o ganho cresce com a fração de rótulos de treino trocados? (rodar_ruido.sh; fora do padrão)
+    "cifar10_ruido10": dict(dados="cifar10",  arq="resnet32",  ruido=0.1, artigo="curva de ruído (ResNet-32)"),
+    "cifar10_ruido20": dict(dados="cifar10",  arq="resnet32",  ruido=0.2, artigo="curva de ruído (ResNet-32)"),
+    "cifar10_ruido40": dict(dados="cifar10",  arq="resnet32",  ruido=0.4, artigo="curva de ruído (ResNet-32)"),
     "cifar10_vgg16":   dict(dados="cifar10",  arq="vgg16",     ruido=0.0, artigo="ConfidNet 2019 / FD-Shifts 2023"),
     "cifar100_vgg16":  dict(dados="cifar100", arq="vgg16",     ruido=0.0, artigo="ConfidNet 2019 / FD-Shifts 2023"),
     "svhn":            dict(dados="svhn",     arq="cnn",       ruido=0.0, artigo="ConfidNet 2019 / FD-Shifts 2023"),
