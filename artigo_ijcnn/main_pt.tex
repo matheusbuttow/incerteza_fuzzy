@@ -116,8 +116,11 @@ fuzzy ao comportamento interno de uma rede já treinada para detectar quando ela
 
 Seja $f$ um classificador treinado com $K$ classes, mantido congelado. Para uma entrada $x$, $f$ responde $\hat y(x)$ com confiança $p(x)$:
 no caso binário, $p$ é a saída sigmoide da classe positiva e $\hat y = \mathbf{1}[p \ge \tau]$, com o limiar $\tau$ escolhido na validação
-(índice de Youden); no caso multiclasse, $p$ é a maior probabilidade do softmax. Dizemos que a rede alucinou em $x$ quando $\hat y(x) \ne y$.
-O sistema produz uma pontuação $r(x) \in [0,1]$, o risco de alucinação, em três etapas: leitura da rede, fuzzificação e inferência.
+(índice de Youden); no caso multiclasse, $p$ é a maior probabilidade do softmax. Dizemos que a rede alucinou em $x$ quando $\hat y(x) \ne y$, e que a alucinação é \emph{confiante} quando, além disso, $p(x)$ está entre os
+maiores valores de confiança da rede. Esse é o caso que nos interessa: quando a rede é treinada com rótulos ruidosos, ela aprende
+associações erradas e passa a responder errado com confiança alta, de modo que $p$ deixa de distinguir erro de acerto.
+O sistema produz uma pontuação $r(x) \in [0,1]$, o risco de alucinação, em três etapas (leitura da rede, fuzzificação e inferência)
+e, a partir dela, classifica cada resposta em uma de três zonas (Seção~\ref{sec:zonas}). Nada na rede é alterado ou retreinado.
 
 \subsection{Etapa 1: leitura da rede}
 \label{sec:leitura}
@@ -133,7 +136,10 @@ $f$ é a composição de $B$ blocos seguida de uma cabeça de classificação,
 em que $\mathbf{Z}_b(x) \in \mathbb{R}^{C_b \times H_b \times W_b}$ é o mapa de ativações do bloco $b$, com $C_b$ canais sobre uma grade
 espacial $H_b \times W_b$. Os primeiros blocos respondem a bordas, cores e texturas; os intermediários, a padrões; os finais, ao objeto
 inteiro. Só a cabeça $h$ transforma a última representação em resposta: no caso binário, $p(x) = \sigma\big(h(\mathbf{Z}_B(x))\big)$, com
-$\sigma(t) = 1/(1+e^{-t})$. A Fig.~\ref{fig:blocos} ilustra esse percurso. Na EfficientNet-B0 lemos $B=18$ sub-blocos; na ResNet-32, $B=16$.
+$\sigma(t) = 1/(1+e^{-t})$. A Fig.~\ref{fig:blocos} ilustra esse percurso. O número de blocos lidos depende da arquitetura: $B=16$ na ResNet-32 (cada bloco
+residual), 13 na VGG-16 (cada convolução), 19 na MobileNetV2, 18 na EfficientNet-B0, 17 na ResNet-50 e 12 no ViT-B/16 (cada camada do
+\textit{encoder}). No transformer, $\mathbf{Z}_b$ é uma sequência de \textit{tokens}, e o resumo do Passo~1 abaixo é a média sobre os
+\textit{tokens} em vez da média espacial.
 
 \begin{figure*}[t]
 \centering
@@ -263,7 +269,7 @@ $\nu$ e $\delta$. As três de estabilidade exigem $V$ passagens pela rede; as ou
 O motivo é a redundância. Várias candidatas medem quase a mesma coisa: $\mathrm{TV}$ e $D$ contam,
 de formas diferentes, a mesma hesitação ao longo dos blocos; $\bar H$ e $\sigma_{\mathbf c}$ sobem juntas;
 $J$ e $A$ acompanham de perto a própria confiança $p$. Nos nossos experimentos, essas correlações de
-postos chegaram a $|\rho| \approx 0{,}9$ ou mais (Tabela~\ref{tab:features}). Colocar características redundantes
+postos chegaram a $|\rho| \approx 0{,}8$ a $0{,}9$ (Tabela~\ref{tab:features}). Colocar características redundantes
 no mesmo modelo não traz informação nova, só dobra o número de regras e torna os pesos instáveis
 e difíceis de interpretar.
 
@@ -291,7 +297,8 @@ que exige uma única passagem pela rede.
 \begin{table}[t]
 \centering
 \caption{As onze características candidatas. $|\rho_p|$: mediana da correlação de Spearman com $p$;
-Esc.: porcentagem das 26 execuções (8 cenários, 3 a 5 sementes) em que a característica entrou no modelo final.}
+Esc.: porcentagem das partições de treino em que a característica foi escolhida
+(CIFAR-10 e CIFAR-10N, três redes cada; números provisórios, semente 42).}
 \label{tab:features}
 \footnotesize
 \setlength{\tabcolsep}{3pt}
@@ -300,15 +307,15 @@ Esc.: porcentagem das 26 execuções (8 cenários, 3 a 5 sementes) em que a cara
  & Grupo & O que mede & $|\rho_p|$ & Esc. \\
 \midrule
 $p$ & resposta & confiança final da rede & 1,00 & 100\% \\
-$\sigma_V$ & estabilidade & variação de $p$ entre vistas & 0,82 & 73\% \\
-$\delta$ & familiaridade & distância aos vizinhos & 0,64 & 54\% \\
-$\sigma_{\mathbf c}$ & estabilidade & variação do caminho entre vistas & 0,52 & 54\% \\
-$A$ & caminho & confiança no último terço & 0,78 & 46\% \\
-$J$ & caminho & salto do último bloco à saída & 0,88 & 35\% \\
-$D$ & caminho & bloco em que a decisão firmou & 0,40 & 15\% \\
-$\bar H$ & caminho & indecisão média das sondas & 0,63 & 12\% \\
-$\nu$ & familiaridade & vizinhos com outra resposta & 0,35 & 12\% \\
-$\Delta_V$ & estabilidade & vistas com outra resposta & 0,39 & 0\% \\
+$\sigma_V$ & estabilidade & variação de $p$ entre vistas & 0,71 & 78\% \\
+$A$ & caminho & confiança no último terço & 0,77 & 64\% \\
+$\sigma_{\mathbf c}$ & estabilidade & variação do caminho entre vistas & 0,44 & 44\% \\
+$\delta$ & familiaridade & distância aos vizinhos & 0,73 & 30\% \\
+$D$ & caminho & bloco em que a decisão firmou & 0,46 & 28\% \\
+$\bar H$ & caminho & indecisão média das sondas & 0,44 & 22\% \\
+$\nu$ & familiaridade & vizinhos com outra resposta & 0,49 & 20\% \\
+$\Delta_V$ & estabilidade & vistas com outra resposta & 0,50 & 12\% \\
+$J$ & caminho & salto do último bloco à saída & 0,84 & 2\% \\
 $\mathrm{TV}$ & caminho & trocas de opinião & 0,22 & 0\% \\
 \bottomrule
 \end{tabular}
@@ -336,24 +343,85 @@ regras de maior contribuição $w_{jk}\mu_{jk}(x_j)$.
 Escolhemos regras de um único antecedente por dois motivos. Primeiro, cada regra pode ser lida sozinha, sem combinar condições. Segundo,
 o número de regras cresce linearmente com o número de características, o que deixa os pesos estáveis mesmo com poucos exemplos de erro.
 
+\subsection{Etapa 4: três zonas}
+\label{sec:zonas}
+O risco $r(x)$ ordena as respostas, mas uma aplicação precisa de uma decisão: confiar na rede ou mandar a imagem para revisão.
+Para isso, dois limiares dividem as respostas em três zonas,
+\begin{equation}
+  z(x) = \begin{cases}
+    \textsc{seguro},  & r(x) < t_s,\\
+    \textsc{alarme},  & r(x) > t_a,\\
+    \textsc{incerto}, & \text{caso contrário},
+  \end{cases}
+  \label{eq:zonas}
+\end{equation}
+escolhidos para que cada zona tenha uma garantia sobre a taxa de erro da rede. Seja $e_+(t)$ o limite superior de 95\% de
+Clopper--Pearson~\cite{clopper1934} da taxa de erro entre as imagens com $r < t$, e $e_-(t)$ o limite inferior de 95\% entre as imagens
+com $r > t$. Então
+\begin{align}
+  t_s &= \max\{\, t : e_+(t) \le \alpha_s \,\}, \nonumber\\
+  t_a &= \min\{\, t : e_-(t) \ge \alpha_a \,\},
+  \label{eq:limiares}
+\end{align}
+com $\alpha_s$ igual a um terço da taxa de erro da rede (a zona segura deve errar no máximo um terço do que a rede erra) e
+$\alpha_a = 0{,}5$ (no alarme, pelo menos metade das respostas está errada). Os limiares são escolhidos apenas nos dados de treino do
+sistema, com as notas fora da partição de uma validação cruzada interna de três partições, para que não sejam ajustados às mesmas
+notas que avaliam. Quando a rede erra muito, pode ocorrer $t_a < t_s$; nesse caso a zona \textsc{incerto} fica vazia e tudo o que não é
+seguro vai para o alarme.
+
+\subsection{Alucinações confiantes}
+\label{sec:confiantes}
+Para medir o caso que motiva o trabalho, separamos o grupo $\mathcal{G}_q$ das $q$ imagens de teste em que a rede está mais confiante
+(as de maior $p$; usamos $q = 25\%$ e $50\%$). Dentro de $\mathcal{G}_q$, $p$ quase não varia e, por isso, quase não informa. Avaliamos
+ali duas versões: o sistema geral, treinado em todas as imagens, e uma versão específica, treinada só em $\mathcal{G}_q$ e
+\emph{sem} $p$ entre as características (o $p$ apenas define o grupo). A versão específica responde diretamente à pergunta: a rede está
+segura; algo dentro dela indica que errou?
+
 % =====================================================================
 \section{Configuração Experimental}
 
-\subsection{Cenários e redes}
-A Tabela~\ref{tab:redes} lista os oito cenários, escolhidos para reproduzir os dos trabalhos com que comparamos: ResNet-32 no CIFAR-10,
-limpo e com 30\% dos rótulos de treino trocados por outra classe~\cite{chen2019}; VGG-16 no CIFAR-10 e no CIFAR-100, uma CNN pequena no SVHN
-e uma MLP no MNIST~\cite{corbiere2019,jaeger2023}. Incluímos também um problema binário real, o HAM10000~\cite{tschandl2018} (benigno vs.\
-maligno, com \textit{mel}, \textit{bcc} e \textit{akiec} como malignas), dividido por lesão em treino, validação e teste (70/10/20\%), com
-todas as lesões (cinco sementes) e com um subconjunto de 3.000 (três sementes), e uma EfficientNet-B0 pré-treinada ajustada por 15 épocas.
-Cada rede é treinada uma vez por semente e congelada; 5.000 imagens de treino servem de referência para as sondas, os vizinhos e o
-Mahalanobis.
+\subsection{Dados e redes}
+Escolhemos um conjunto de dados por domínio, todos com rótulos de teste confiáveis, e três redes de famílias diferentes em cada um
+(Tabela~\ref{tab:cenarios}), para que o resultado não dependa de uma arquitetura.
+
+\emph{CIFAR-10}~\cite{krizhevsky2009} é a referência sem ruído. \emph{CIFAR-10N}~\cite{wei2022} usa \emph{as mesmas} imagens, mas com os
+rótulos de treino dados por pessoas na plataforma Amazon Mechanical Turk; usamos o conjunto \textit{worst} (o pior de três anotações),
+com 40,2\% dos rótulos de treino errados. Como só os rótulos de treino mudam, o par CIFAR-10/CIFAR-10N isola o efeito do ruído real.
+\emph{ANIMAL-10N}~\cite{song2019} tem cinco pares de animais parecidos (por exemplo, gato e lince), coletados em buscas na internet, com
+cerca de 8\% de rótulos de treino errados e um teste verificado. \emph{Chaoyang}~\cite{zhu2022} é um problema médico de histopatologia
+colorretal com quatro classes, em que os rótulos de treino vêm de patologistas que discordam entre si e o teste contém apenas imagens com
+rótulo de consenso. % TODO conferir no artigo dos autores como o treino e o teste foram rotulados
+
+Em todos os casos os erros são medidos contra os rótulos de teste confiáveis: a rede é treinada com o ruído e avaliada sem ele. As redes
+pequenas (ResNet-32~\cite{he2016}, VGG-16 com normalização em lote~\cite{simonyan2015} e MobileNetV2~\cite{sandler2018}) são treinadas do
+zero por 100 épocas (60 no ANIMAL-10N, cujas imagens têm 64$\times$64) com SGD, momento de Nesterov e redução cosseno do passo. No
+Chaoyang, EfficientNet-B0~\cite{tan2019}, ResNet-50~\cite{he2016} e ViT-B/16~\cite{dosovitskiy2021} pré-treinadas no ImageNet são
+ajustadas por 15 épocas com AdamW, em imagens de 224$\times$224, usando 10\% do treino para escolher a melhor época. Cada rede é treinada
+uma vez por semente e congelada; 5.000 imagens de treino servem de referência para as sondas, os vizinhos e o Mahalanobis.
+
+\begin{table}[t]
+\centering
+\caption{Conjuntos de dados e redes. Ruído: fração dos rótulos de \emph{treino} errados; o teste usa rótulos confiáveis.}
+\label{tab:cenarios}
+\footnotesize
+\setlength{\tabcolsep}{2.5pt}
+\begin{tabular}{@{}llccp{2.3cm}@{}}
+\toprule
+Dados & Domínio & Cl. & Ruído & Redes \\
+\midrule
+CIFAR-10   & objetos        & 10 & ---              & ResNet-32, VGG-16, MobileNetV2 \\
+CIFAR-10N  & objetos        & 10 & 40\% (pessoas)   & ResNet-32, VGG-16, MobileNetV2 \\
+ANIMAL-10N & animais        & 10 & $\sim$8\% (web)  & VGG-16, ResNet-32, MobileNetV2 \\
+Chaoyang   & histopat.      & 4  & patologistas     & EfficientNet-B0, ResNet-50, ViT-B/16 \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \subsection{Detectores comparados}
 Todos os detectores pontuam as mesmas imagens de teste da mesma rede congelada (pontuação maior = alucinação mais provável).
-\emph{Sem treino:} confiança do softmax (MSP) e entropia~\cite{hendrycks2017}, distância ao limiar (binário), desvio entre vistas (TTA),
+\emph{Sem treino:} confiança do softmax (MSP) e entropia~\cite{hendrycks2017}, desvio entre vistas (TTA),
 MC Dropout com $T=30$ passagens pela cabeça~\cite{gal2016}, Mahalanobis com covariância compartilhada~\cite{lee2018} e Deep $k$NN~\cite{papernot2018}.
-\emph{Com treino:} um modelo só com a saída (regressão logística sobre $p$ e $p^2$ no binário; igual ao MSP no multiclasse),
-Chen et al.~\cite{chen2019} (sondas treinadas com o rótulo em todos os blocos, as 3 maiores probabilidades de cada sonda, \textit{gradient boosting}),
+\emph{Com treino:} Chen et al.~\cite{chen2019} (sondas treinadas com o rótulo em todos os blocos, as 3 maiores probabilidades de cada sonda, \textit{gradient boosting}),
 Font et al.~\cite{font2025}, Gorbett e Blanchard~\cite{gorbett2022} (SVM linear sobre a penúltima camada) e uma versão pós-treino do
 ConfidNet~\cite{corbiere2019}.
 \emph{Outros sistemas fuzzy:} Barna et al.~\cite{barna2026} (implicação de Goguen entre as duas maiores probabilidades, sem treino),
@@ -367,7 +435,8 @@ escolhidas para o nosso sistema, de modo que a comparação isola o modelo fuzzy
 A métrica principal é a AUROC para separar alucinações de acertos. Também relatamos a AUPR das alucinações, a FPR com 95\% de TPR, o excesso
 de área sob a curva risco--cobertura (E-AURC)~\cite{jaeger2023} e quantas alucinações são encontradas quando 10\%, 20\% e 30\% das entradas
 mais suspeitas são encaminhadas a uma pessoa. As diferenças de AUROC são testadas em cada rodada com bootstrap pareado (1.000 reamostragens
-comuns a todos os métodos); uma diferença é significativa quando o intervalo de 95\% não contém o zero.
+comuns a todos os métodos); uma diferença é significativa quando o intervalo de 95\% não contém o zero. Para as zonas, relatamos a fração das imagens em cada uma,
+a taxa de erro da rede dentro dela e a fração dos erros que ela captura; para as alucinações confiantes, a AUROC dentro de $\mathcal{G}_q$.
 
 % =====================================================================
 \section{Resultados}
