@@ -381,8 +381,8 @@ segura; algo dentro dela indica que errou?
 \section{Configuração Experimental}
 
 \subsection{Dados e redes}
-Escolhemos um conjunto de dados por domínio, todos com rótulos de teste confiáveis, e três redes de famílias diferentes em cada um
-(Tabela~\ref{tab:cenarios}), para que o resultado não dependa de uma arquitetura.
+Escolhemos um conjunto de dados por domínio, todos com rótulos de teste confiáveis, e três redes de famílias diferentes em cada um,
+para que o resultado não dependa de uma arquitetura.
 
 \emph{CIFAR-10}~\cite{krizhevsky2009} é a referência sem ruído. \emph{CIFAR-10N}~\cite{wei2022} usa \emph{as mesmas} imagens, mas com os
 rótulos de treino dados por pessoas na plataforma Amazon Mechanical Turk; usamos o conjunto \textit{worst} (o pior de três anotações),
@@ -398,24 +398,6 @@ zero por 100 épocas (60 no ANIMAL-10N, cujas imagens têm 64$\times$64) com SGD
 Chaoyang, EfficientNet-B0~\cite{tan2019}, ResNet-50~\cite{he2016} e ViT-B/16~\cite{dosovitskiy2021} pré-treinadas no ImageNet são
 ajustadas por 15 épocas com AdamW, em imagens de 224$\times$224, usando 10\% do treino para escolher a melhor época. Cada rede é treinada
 uma vez por semente e congelada; 5.000 imagens de treino servem de referência para as sondas, os vizinhos e o Mahalanobis.
-
-\begin{table}[t]
-\centering
-\caption{Conjuntos de dados e redes. Ruído: fração dos rótulos de \emph{treino} errados; o teste usa rótulos confiáveis.}
-\label{tab:cenarios}
-\footnotesize
-\setlength{\tabcolsep}{2.5pt}
-\begin{tabular}{@{}llccp{2.3cm}@{}}
-\toprule
-Dados & Domínio & Cl. & Ruído & Redes \\
-\midrule
-CIFAR-10   & objetos        & 10 & ---              & ResNet-32, VGG-16, MobileNetV2 \\
-CIFAR-10N  & objetos        & 10 & 40\% (pessoas)   & ResNet-32, VGG-16, MobileNetV2 \\
-ANIMAL-10N & animais        & 10 & $\sim$8\% (web)  & VGG-16, ResNet-32, MobileNetV2 \\
-Chaoyang   & histopat.      & 4  & patologistas     & EfficientNet-B0, ResNet-50, ViT-B/16 \\
-\bottomrule
-\end{tabular}
-\end{table}
 
 \subsection{Detectores comparados}
 Todos os detectores pontuam as mesmas imagens de teste da mesma rede congelada (pontuação maior = alucinação mais provável).
@@ -441,23 +423,22 @@ a taxa de erro da rede dentro dela e a fração dos erros que ela captura; para 
 % =====================================================================
 \section{Resultados}
 
-\input{tabelas_pt}
 
 \subsection{Detecção de alucinações}
-A Tabela~\ref{tab:auroc} mostra a AUROC. O sistema fuzzy tem a maior média em seis dos oito cenários e empata com o softmax no SVHN (0,926);
+Os resultados mostram a AUROC. O sistema fuzzy tem a maior média em seis dos oito cenários e empata com o softmax no SVHN (0,926);
 no MNIST, em que a rede erra em menos de 1\% das imagens, fica 0,004 abaixo do melhor detector. Também tem o menor E-AURC nesses mesmos seis
 cenários, por exemplo 14,8 contra 22,0 de Chen et al.\ e 45,4 do MSP no CIFAR-10 com ruído.
 
-A Tabela~\ref{tab:ganho} mostra o resultado central: o ganho sobre a confiança da rede cresce à medida que essa confiança deixa de ser
+Os resultados mostram o resultado central: o ganho sobre a confiança da rede cresce à medida que essa confiança deixa de ser
 confiável. É desprezível no MNIST e no SVHN, de 0,01 a 0,02 no CIFAR limpo, de 0,05 a 0,09 no HAM10000 e de 0,11 no CIFAR-10 com ruído nos
 rótulos. O ruído é o caso extremo de alucinação: as últimas camadas memorizam rótulos errados e o softmax fica confiante no erro, enquanto
 as sondas mostram que os blocos anteriores discordavam. Em relação a Chen et al., o concorrente que também lê as camadas internas, o sistema
-fuzzy é significativamente melhor em 18 de 26 rodadas e pior em nenhuma (Tabela~\ref{tab:signif}), apesar de usar só 12 regras em vez de um
+fuzzy é significativamente melhor em 18 de 26 rodadas e pior em nenhuma , apesar de usar só 12 regras em vez de um
 \textit{gradient boosting} sobre todas as sondas.
 
 No HAM10000 o quadro é mais equilibrado: o sistema fuzzy (0,916), Chen et al.\ (0,909) e o modelo só com a saída (0,907) ficam próximos, e o
 ganho sobre Chen et al.\ é significativo em uma de cinco sementes. Encaminhando 20\% das imagens, os três encontram 106, 104 e 107 de cada 139
-alucinações por 1.000 imagens (Tabela~\ref{tab:encontrados}), contra 82 do MSP e do MC Dropout. Nesse cenário, a vantagem do sistema fuzzy está
+alucinações por 1.000 imagens , contra 82 do MSP e do MC Dropout. Nesse cenário, a vantagem do sistema fuzzy está
 na explicação, não na ordenação.
 
 A variante de uma passagem, sem as características de estabilidade, mantém a maior parte do ganho onde a rede mais alucina (0,896 no CIFAR-10
