@@ -25,10 +25,11 @@ SAIDA = Path("resultados")
 
 # ----------------------------------------------------------------------------- o que rodar
 SEMENTES = [42, 7, 2026]                               # cada semente: novo sorteio dos dados + novo treino da rede
-# Seleção do artigo: referência sem ruído + RUÍDO REAL nos rótulos de treino (pessoas, internet, patologistas).
-# Fora do padrão (definidos abaixo, ainda rodáveis com --exp): ham10000*, cifar10_ruido* (ruído sintético), svhn.
-EXPERIMENTOS_PADRAO = ["cifar10", "cifar10_vgg16", "cifar100_vgg16", "mnist",
-                       "cifar10n_aggre", "cifar10n_random1", "cifar10n_worst", "cifar100n", "animal10n", "chaoyang"]
+# Seleção do artigo: um cenário por domínio. CIFAR-10 limpo e CIFAR-10N usam AS MESMAS imagens (só os rótulos de treino
+# mudam), isolando o efeito do ruído real; ANIMAL-10N (web) e Chaoyang (médico) trazem domínios diferentes.
+# Fora do padrão (definidos abaixo, ainda rodáveis com --exp; relatório com --todos): cifar10_vgg16, cifar100_vgg16, mnist,
+# cifar10n_aggre/random1, cifar100n, ham10000*, cifar10_ruido* (ruído sintético), svhn.
+EXPERIMENTOS_PADRAO = ["cifar10", "cifar10n_worst", "animal10n", "chaoyang"]
 
 EXPERIMENTOS = {
     "ham10000":        dict(dados="ham10000", arq="effnet_b0", ruido=0.0, artigo="HAM10000 (mesma configuração do seu BRACIS 2025)"),

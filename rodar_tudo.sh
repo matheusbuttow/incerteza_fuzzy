@@ -1,12 +1,11 @@
 #!/usr/bin/env bash
 # rodar_tudo.sh — roda a seleção de datasets do artigo (config.EXPERIMENTOS_PADRAO), o relatório e as análises.
-#   referência sem ruído: CIFAR-10 (ResNet-32 e VGG-16), CIFAR-100, MNIST
-#   ruído REAL: CIFAR-10N (3 níveis), CIFAR-100N, ANIMAL-10N, Chaoyang
+#   um cenário por domínio: CIFAR-10 limpo, CIFAR-10N "worst" (rótulos humanos), ANIMAL-10N (web), Chaoyang (médico)
 #
 # Uso (dentro da pasta do projeto):
 #   bash rodar_tudo.sh                       # treina o que falta (o que já existe em resultados/ é reaproveitado)
 #   bash rodar_tudo.sh --refazer avaliacao   # refaz só a comparação, sem retreinar
-#   bash rodar_tudo.sh --exp cifar10n_worst animal10n --sementes 42    # só alguns, uma semente (teste rápido real)
+#   bash rodar_tudo.sh --sementes 42         # rodada rápida: os 4 cenários com uma semente
 #
 #   nohup bash rodar_tudo.sh > log_tudo.txt 2>&1 &
 #   tail -f log_tudo.txt
