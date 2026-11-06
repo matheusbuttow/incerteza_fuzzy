@@ -182,6 +182,18 @@ Experimentos (cada um reproduz o cenário de um artigo):
 | `mostrar_pertinencias.py` | (`--todos` para todos os experimentos) desenha as funções de pertinência do fuzzy aditivo final, o peso de cada regra e os pontos de risco por valor (pertinencias.png) |
 | `tabelas_latex.py` | gera as tabelas do artigo em LaTeX para o Overleaf (tabelas_pt.tex e tabelas_en.tex) a partir do relatorio.xlsx |
 
+## 8a. Pistas novas: fronteira entre classes (`rodar_novo.sh`)
+
+Variante **NOSSO: Fuzzy aditivo + fronteira**: o mesmo sistema, podendo escolher também `fronteira_classe`
+(a imagem está mais perto dos exemplos da classe escolhida ou da 2ª mais provável? > 0,5 = do lado de outra classe)
+e `dist_classe` (distância aos vizinhos da classe escolhida). O método principal continua igual, para comparar.
+Roda em cima das redes já treinadas, sem retreinar:
+
+```bash
+nohup bash rodar_novo.sh rapido > log_novo.txt 2>&1 &     # 3 cenários × 1 semente
+nohup bash rodar_novo.sh completo > log_novo.txt 2>&1 &   # tudo
+```
+
 ## 8b. Erros confiantes (`analise_confiantes.py`)
 
 Depois da rodada, sem GPU: "a rede está muito segura, mas errou — dá para perceber?". O p só FILTRA as imagens mais
