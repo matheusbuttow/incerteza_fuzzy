@@ -1,0 +1,63 @@
+% =====================================================================
+% revisao_sistematica.tex — ESQUELETO da revisão sistemática (PRISMA 2020), cabe em 1 página em coluna dupla.
+% Uso no main_pt.tex: \input{revisao_sistematica} no lugar da subseção "Sistemas fuzzy e incerteza de redes".
+% Precisa no preâmbulo: \usepackage{tikz} \usetikzlibrary{positioning}
+% Os textos entre colchetes [...] são para VOCÊ escrever. Os números N1..N4 vêm das suas buscas.
+% Orçamento de espaço (1 página = 2 colunas):
+%   figura da pirâmide ............ ~1/3 de coluna
+%   tabela das 4 etapas ........... ~1/3 de coluna
+%   texto ......................... ~1 coluna e 1/3 (≈ 600–700 palavras no total)
+% =====================================================================
+
+\subsection{Revisão sistemática}
+\label{sec:revisao}
+
+% --- Parágrafo 1 (~80 palavras): pergunta da revisão e protocolo (PRISMA 2020, item 3–4 do checklist)
+[Pergunta que a revisão responde. Bases consultadas e data da busca. Que segue o PRISMA 2020~\cite{page2021}.]
+
+% --- Parágrafo 2 (~150 palavras): as 4 etapas de refinamento (itens 5–8 do checklist)
+[Como cada etapa restringe a anterior: o termo ou critério acrescentado em cada uma e por quê.
+Critérios de inclusão e exclusão. Quem fez a triagem.]
+
+\begin{table}[t]
+\centering
+\caption{As quatro etapas de refinamento da busca.}
+\label{tab:etapas_revisao}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}cp{0.72\columnwidth}r@{}}
+\toprule
+Etapa & Critério acrescentado & Artigos \\
+\midrule
+1 & [string inicial, ex.: fuzzy AND neural network AND uncertainty] & N1 \\
+2 & [restrição 2] & N2 \\
+3 & [restrição 3] & N3 \\
+4 & [restrição 4 / leitura completa] & N4 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[x=\columnwidth/8.6, y=0.62cm, font=\footnotesize]
+  % pirâmide invertida: cada faixa é um trapézio mais estreito que o de cima
+  \def\faixa#1#2#3#4#5{%  #1 nível (0 = topo)  #2 meia-largura em cima  #3 meia-largura embaixo  #4 cor  #5 texto
+    \fill[#4] (-#2,-#1) -- (#2,-#1) -- (#3,-#1-1) -- (-#3,-#1-1) -- cycle;
+    \node[align=center] at (0,-#1-0.5) {#5};}
+  \faixa{0}{4.2}{3.4}{blue!45}{Etapa 1: [critério] \quad $n = $ N1}
+  \faixa{1}{3.4}{2.6}{blue!35}{Etapa 2: [critério] \quad $n = $ N2}
+  \faixa{2}{2.6}{1.8}{blue!25}{Etapa 3: [critério] \quad $n = $ N3}
+  \faixa{3}{1.8}{1.0}{blue!15}{Etapa 4: $n = $ N4}
+\end{tikzpicture}
+\caption{Refinamento da busca em quatro etapas. [Uma frase sua sobre o que sobra no fim.]}
+\label{fig:piramide}
+\end{figure}
+
+% --- Parágrafo 3 (~200 palavras): o que os N4 artigos fazem (itens 17–20 do checklist)
+[Agrupe os artigos incluídos por forma de uso do fuzzy (dentro da rede, sobre a saída, na agregação...).
+Quantos em cada grupo. Exemplos com \cite.]
+
+% --- Parágrafo 4 (~100 palavras): a lacuna (itens 23–24 do checklist)
+[O que nenhum dos incluídos faz e que este artigo faz.]
+
+% --- Opcional, se sobrar espaço: limitações da revisão (item 23c) em 1–2 frases.
