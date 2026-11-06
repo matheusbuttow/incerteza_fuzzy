@@ -111,6 +111,10 @@ def rodar_um(exp, semente, disp, refazer):
         log("  avaliação já feita (use --refazer avaliacao para refazer)")
     else:
         log("  comparando todos os métodos (validação cruzada)...")
+        n_erros = int(tab.erro.sum())
+        if n_erros < 2 * C.N_FOLDS or n_erros > len(tab) - 2 * C.N_FOLDS:
+            raise ValueError(f"a rede errou {n_erros} de {len(tab)} imagens de teste: poucos erros (ou acertos) para comparar "
+                             f"os detectores. Confira o treino desta rede.")
         oof, escolhas, fixos = cmp.avaliar(tab, ext, conj.binario, info["limiar"], conj.y_teste, semente)
         y = tab.erro.values
         pd.DataFrame(oof).assign(erro=y).to_csv(pasta / "escores.csv.gz", index=False)
