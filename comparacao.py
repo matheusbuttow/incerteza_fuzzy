@@ -20,6 +20,7 @@ Treinados em validação cruzada (mesmos folds para todos):
   NOSSO: Wang-Mendel       regras fuzzy (P + 2 features internas)
   NOSSO: Fuzzy aditivo     regras fuzzy de 1 condição com pesos (P + 3 features internas)
   NOSSO: Fuzzy aditivo (sem vistas)  o mesmo, proibido de usar as vistas: UMA passagem pela rede.
+  NOSSO: Fuzzy aditivo + fronteira   o mesmo, podendo escolher também as pistas NOVAS (fronteira entre classes).
                            Mostra quanto do ganho vem da leitura interna e quanto das vistas (TTA).
 Fuzzy de outros autores (fuzzy_outros.py; adaptados à tarefa, ver PROTOCOLO):
   Barna et al. 2026        possibilidade de erro sobre o softmax (sem treino)
@@ -46,14 +47,14 @@ from sklearn.svm import LinearSVC
 import config as C
 import fuzzy as fz
 import fuzzy_outros as fo
-from leitura import NOSSAS
+from leitura import NOSSAS, NOVAS
 
 warnings.filterwarnings("ignore")
 
 SEM_TREINO = {"Softmax (MSP)": "msp", "Entropia do softmax": "entropia_softmax", "Distância ao limiar": "prox_p",
               "TTA (vistas)": "p_vistas_std", "MC Dropout (desvio)": "mc_dropout_std", "MC Dropout (entropia)": "mc_entropia",
               "Mahalanobis": "mahalanobis", "Deep kNN": "vizinhos_discordam"}
-NOSSOS = ["NOSSO: Wang-Mendel", "NOSSO: Fuzzy aditivo", "NOSSO: Fuzzy aditivo (sem vistas)"]
+NOSSOS = ["NOSSO: Wang-Mendel", "NOSSO: Fuzzy aditivo", "NOSSO: Fuzzy aditivo (sem vistas)", "NOSSO: Fuzzy aditivo + fronteira"]
 FUZZY_OUTROS = ["Barna et al. 2026", "Aghaeipoor et al. 2023", "Denoeux 2023 (ENNreg)", "Msaddi e Kumbasar 2026"]
 
 # família (tópico da revisão) e entrada de cada método — comparações justas são feitas dentro da mesma família/entrada
@@ -68,6 +69,7 @@ FAMILIA = {
     "Barna et al. 2026": "8. Fuzzy (outros autores)", "Aghaeipoor et al. 2023": "8. Fuzzy (outros autores)",
     "Denoeux 2023 (ENNreg)": "8. Fuzzy (outros autores)", "Msaddi e Kumbasar 2026": "8. Fuzzy (outros autores)",
     "NOSSO: Fuzzy aditivo": "Nosso (4 + 8)", "NOSSO: Fuzzy aditivo (sem vistas)": "Nosso (4 + 8)",
+    "NOSSO: Fuzzy aditivo + fronteira": "Nosso (4 + 8)",
     "NOSSO: Wang-Mendel": "Nosso — interno (fora do artigo)"}
 ENTRADA = {
     "Softmax (MSP)": "saída", "Entropia do softmax": "saída", "Distância ao limiar": "saída", "Só P": "saída",
@@ -78,6 +80,7 @@ ENTRADA = {
     "Barna et al. 2026": "saída", "Aghaeipoor et al. 2023": "atribuições da penúltima camada",
     "Denoeux 2023 (ENNreg)": "nossas características", "Msaddi e Kumbasar 2026": "nossas características",
     "NOSSO: Fuzzy aditivo": "nossas características", "NOSSO: Fuzzy aditivo (sem vistas)": "nossas características (1 passagem)",
+    "NOSSO: Fuzzy aditivo + fronteira": "nossas características + fronteira entre classes",
     "NOSSO: Wang-Mendel": "nossas características"}
 VISTAS = ["vistas_mudam", "p_vistas_std", "trajetoria_vistas"]     # exigem passar a imagem várias vezes pela rede
 REFERENCIA = {"Softmax (MSP)": "Hendrycks & Gimpel 2017", "Entropia do softmax": "—", "Distância ao limiar": "—",
@@ -86,6 +89,7 @@ REFERENCIA = {"Softmax (MSP)": "Hendrycks & Gimpel 2017", "Entropia do softmax":
               "Chen et al. 2019": "AISTATS 2019", "Font et al. 2025": "arXiv 2025", "Gorbett & Blanchard 2022": "WACV-W 2022",
               "ConfidNet": "Corbière et al., NeurIPS 2019", "NOSSO: Wang-Mendel": "proposto", "NOSSO: Fuzzy aditivo": "proposto",
               "NOSSO: Fuzzy aditivo (sem vistas)": "proposto, uma passagem",
+              "NOSSO: Fuzzy aditivo + fronteira": "proposto, variante em teste",
               "Barna et al. 2026": "Applied Sciences 2026", "Aghaeipoor et al. 2023": "IEEE TFS 2023",
               "Denoeux 2023 (ENNreg)": "IEEE TFS 2023", "Msaddi e Kumbasar 2026": "IEEE TETCI 2026"}
 
@@ -120,6 +124,10 @@ def avaliar(tab, extras, binario, limiar, y_teste, semente):
     escolhas = {m: [] for m in NOSSOS}
     cand = [c for c in NOSSAS if c in tab]
     cand_sem_vistas = [c for c in cand if c not in VISTAS]
+    cand_fronteira = cand + [c for c in NOVAS if c in tab]
+    if len(cand_fronteira) == len(cand):                                   # rodada sem as pistas novas
+        treinados.remove("NOSSO: Fuzzy aditivo + fronteira"); del oof["NOSSO: Fuzzy aditivo + fronteira"]
+        del escolhas["NOSSO: Fuzzy aditivo + fronteira"]
     for tr, te in StratifiedKFold(C.N_FOLDS, shuffle=True, random_state=semente).split(tab, y):
         lr = lambda: make_pipeline(StandardScaler(), LogisticRegression(max_iter=3000))
         for m, mod in ([("Só P", lr())] if binario else []) + [("Font et al. 2025", lr()),
@@ -132,7 +140,10 @@ def avaliar(tab, extras, binario, limiar, y_teste, semente):
         d = tab.iloc[tr]
         for m, k, Mod, cs in [("NOSSO: Wang-Mendel", C.FEATURES_WM, fz.WangMendel, cand),
                               ("NOSSO: Fuzzy aditivo", C.FEATURES_ADITIVO, fz.FuzzyAditivo, cand),
-                              ("NOSSO: Fuzzy aditivo (sem vistas)", C.FEATURES_ADITIVO, fz.FuzzyAditivo, cand_sem_vistas)]:
+                              ("NOSSO: Fuzzy aditivo (sem vistas)", C.FEATURES_ADITIVO, fz.FuzzyAditivo, cand_sem_vistas),
+                              ("NOSSO: Fuzzy aditivo + fronteira", C.FEATURES_ADITIVO, fz.FuzzyAditivo, cand_fronteira)]:
+            if m not in escolhas:
+                continue
             feats = fz.selecionar(d, cs, k); escolhas[m].append(feats)
             oof[m][te] = Mod(fixos).fit(d[feats].values, y[tr], feats).predict_proba(tab.iloc[te][feats].values)[:, 1]
             if m == "NOSSO: Fuzzy aditivo":

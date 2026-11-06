@@ -25,9 +25,9 @@ from sklearn.metrics import average_precision_score, roc_auc_score
 from sklearn.model_selection import StratifiedKFold
 
 import fuzzy as fz
-from leitura import NOSSAS
+from leitura import NOSSAS, NOVAS
 
-INTERNAS = [c for c in NOSSAS if c != "p"]          # as 10 sem o p
+INTERNAS = [c for c in NOSSAS + NOVAS if c != "p"]  # as internas sem o p (+ as novas, quando a rodada tiver)
 
 
 def selecionar_sem_p(d, cand, k, max_corr=0.85):

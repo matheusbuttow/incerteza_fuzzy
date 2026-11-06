@@ -40,6 +40,38 @@ from redes import probabilidades
 EPS = 1e-9
 NOSSAS = ["trocas_opiniao", "prof_decisao", "entropia_probes", "conf_fim", "salto_final",
           "vistas_mudam", "p_vistas_std", "trajetoria_vistas", "vizinhos_discordam", "dist_vizinhos", "p"]
+# pistas novas (testadas como variante "NOSSO: Fuzzy aditivo + fronteira"; o método principal continua com as 11 acima)
+#   fronteira_classe  d(classe escolhida) / [d(escolhida) + d(2ª classe)]: > 0,5 = mais perto dos exemplos de OUTRA classe
+#   dist_classe       distância aos vizinhos da classe escolhida (relativa à distância típica do treino)
+NOVAS = ["fronteira_classe", "dist_classe"]
+
+
+def unit(a):
+    a = a - a.mean(1, keepdims=True)
+    return a / (np.linalg.norm(a, axis=1, keepdims=True) + EPS)
+
+
+def fronteira(pen, probs, dec, banco, banco_dec, dist_ref, k=None, bloco=2000):
+    """Pistas de fronteira entre classes, na penúltima camada. `banco`: penúltima da referência já normalizada (unit);
+    `banco_dec`: decisão da rede em cada exemplo da referência. A 2ª classe é a mais provável depois da escolhida."""
+    k = k or C.K_VIZINHOS
+    U = unit(np.asarray(pen, np.float32)); dec = np.asarray(dec).astype(int)
+    P = np.array(probs, dtype=float, copy=True); P[np.arange(len(P)), dec] = -np.inf; seg = P.argmax(1)
+    classes = np.unique(banco_dec); col = {c: np.where(banco_dec == c)[0] for c in classes}
+    d1, d2 = np.full(len(U), np.nan), np.full(len(U), np.nan)
+    for i in range(0, len(U), bloco):
+        S = U[i:i + bloco] @ banco.T; r = np.arange(i, min(i + bloco, len(U)))
+        for c in classes:
+            m1, m2 = dec[r] == c, seg[r] == c
+            if not (m1.any() or m2.any()):
+                continue
+            Sc = S[:, col[c]]; kc = min(k, Sc.shape[1])
+            dc = (1 - -np.sort(-Sc, axis=1)[:, :kc]).mean(1) if kc < 64 else \
+                 (1 - np.take_along_axis(Sc, np.argpartition(-Sc, kc - 1, 1)[:, :kc], 1)).mean(1)
+            d1[r[m1]], d2[r[m2]] = dc[m1], dc[m2]
+    d2 = np.where(np.isnan(d2), np.nanmax(d1) if np.isfinite(np.nanmax(d1)) else 1.0, d2)   # 2ª classe sem exemplos: longe
+    d1 = np.where(np.isnan(d1), np.nanmax(d2), d1)                                       # classe escolhida sem exemplos
+    return {"fronteira_classe": d1 / (d1 + d2 + EPS), "dist_classe": d1 / dist_ref}
 CLASSICAS = ["msp", "entropia_softmax", "prox_p", "mc_dropout_std", "mc_entropia", "mahalanobis", "font_dc", "font_lu"]
 
 
@@ -110,6 +142,14 @@ class LeitorRede:
         self.centros = np.stack([pen[y_ref == c].mean(0) for c in classes])
         self.precisao = LedoitWolf().fit(pen - self.centros[np.searchsorted(classes, y_ref)]).precision_.astype(np.float32)
         self.A_ref, self.y_ref = A, y_ref                                       # Font et al.
+        return self
+
+    def preparar_banco(self, ds_ref):
+        """Só o banco de vizinhos (penúltima da referência + decisões), sem as sondas: uma passada rápida.
+        Usado para acrescentar as pistas NOVAS a rodadas já lidas, sem reler o teste."""
+        _, pen, probs = self._ler(ds_ref)
+        self.banco, self.banco_dec = self._unit(pen), self._decisao(probs)
+        self.dist_ref = float(np.median(self._knn(self.banco, excluir_si=True)[1])) + EPS
         return self
 
     @staticmethod
@@ -195,6 +235,7 @@ class LeitorRede:
         idx, dist = self._knn(self._unit(pen))
         f["vizinhos_discordam"] = (self.banco_dec[idx] != dec[:, None]).mean(1)
         f["dist_vizinhos"] = dist / self.dist_ref
+        f.update(fronteira(pen, probs, dec, self.banco, self.banco_dec, self.dist_ref))
         f["p"] = probs[:, 1] if self.K == 2 else conf_rede
 
         # clássicos

@@ -33,7 +33,7 @@ def rodar_um(exp, semente, disp, refazer):
     import dados
     import extras as ex
     import redes
-    from leitura import LeitorRede
+    from leitura import NOVAS, LeitorRede, fronteira
 
     pasta = C.SAIDA / exp / f"semente_{semente}"
     pasta.mkdir(parents=True, exist_ok=True)
@@ -94,6 +94,13 @@ def rodar_um(exp, semente, disp, refazer):
         tab.to_csv(pasta / "features.csv.gz", index=False)
         np.savez_compressed(pasta / "extras.npz", **ext)
 
+    if any(c not in tab for c in NOVAS):                           # pistas novas (fronteira entre classes) em rodadas antigas
+        log("  acrescentando as pistas de fronteira entre classes (uma passada na referência)...")
+        lr = LeitorRede(rede, conj.n_classes, info["limiar"], conj.vistas, disp, lote).preparar_banco(conj.treino_ref)
+        for c, v in fronteira(ext["penultima"], ext["probs"], tab["decisao"].values, lr.banco, lr.banco_dec, lr.dist_ref).items():
+            tab[c] = v
+        tab.to_csv(pasta / "features.csv.gz", index=False)
+
     if "atrib" not in ext:                                         # atribuições na penúltima camada (Aghaeipoor et al. 2023)
         import fuzzy_outros as fo
         ext["atrib"] = fo.atribuicoes(rede, ext["penultima"], tab["decisao"].values, disp)
@@ -139,7 +146,7 @@ def rodar_um(exp, semente, disp, refazer):
                 log(f"  (CIFAR-10H indisponível: {err})")
         met.to_csv(pasta / "metricas.csv", index=False)           # gravado por último: marca a avaliação como completa
         m = met.set_index("método")
-        for k in ["Só P", "Softmax (MSP)", "MC Dropout (desvio)", "Chen et al. 2019"] + cmp.NOSSOS:
+        for k in [k for k in ["Só P", "Softmax (MSP)", "MC Dropout (desvio)", "Chen et al. 2019"] + cmp.NOSSOS if k in m.index]:
             log(f"    {k:28s} AUROC {m.loc[k, 'AUROC']:.3f} | E-AURC {m.loc[k, 'E-AURC (x1000)']:.1f} | "
                 f"acurácia encaminhando 20% {m.loc[k, 'acurácia encaminhando 20%']:.3f}")
     log(f"  pronto em {(time.time() - t0) / 60:.1f} min")
