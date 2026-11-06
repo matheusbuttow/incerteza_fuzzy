@@ -101,7 +101,8 @@ class LeitorRede:
         self.rede.eval()
         acts, pen, probs = [[] for _ in range(self.B)], [], []
         cap = [None] * self.B
-        reduz = lambda o: (o.float().mean((2, 3)) if o.dim() == 4 else o.float()).cpu().numpy()
+        reduz = lambda o: (o.float().mean((2, 3)) if o.dim() == 4 else            # convolução: média espacial
+                           o.float().mean(1) if o.dim() == 3 else o.float()).cpu().numpy()   # transformer: média dos tokens
         hs = [b.register_forward_hook(lambda m, i, o, k=k: cap.__setitem__(k, reduz(o))) for k, b in enumerate(self.rede.blocos)]
         hp = self.rede.cabeca.register_forward_pre_hook(lambda m, i: pen.append(i[0].float().cpu().numpy()))
         try:

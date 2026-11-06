@@ -224,7 +224,7 @@ def _pastas_imagens(raiz, nome_ds, ajuda):
         raise FileNotFoundError(f"{nome_ds}: não achei {raiz}/. {ajuda}")
 
 
-def _animal10n(semente):
+def _animal10n(semente, epocas=None):
     """ANIMAL-10N (Song et al., ICML 2019): 50.000 imagens de treino com ~8% de rótulos errados (vindos da web)
     e 5.000 de teste verificadas. Arquivos "<classe>_<n>.jpg" dentro de pastas de treino e de teste."""
     raiz = C.ANIMAL_DIR
@@ -248,10 +248,10 @@ def _animal10n(semente):
     meta = pd.DataFrame({"indice": np.arange(len(te)), "rotulo": te.rotulo.values})
     return Conjunto("animal10n", 10, Imagens(tr.image_path, tr.rotulo, aug), Imagens(refs.image_path, refs.rotulo, simples),
                     Imagens(te.image_path, te.rotulo, simples), y_ref=refs.rotulo.values, y_teste=te.rotulo.values,
-                    meta_teste=meta, vistas=VISTAS["animal10n"], epocas=C.EXPERIMENTOS["animal10n"].get("epocas"))
+                    meta_teste=meta, vistas=VISTAS["animal10n"], epocas=epocas)
 
 
-def _chaoyang(semente):
+def _chaoyang(semente, arq="effnet_b0"):
     """Chaoyang (Zhu et al., IEEE TMI 2022): histopatologia colorretal, 4 classes (normal, serrada, adenocarcinoma, adenoma).
     Rótulos de treino com ruído (discordância entre patologistas); teste com rótulos de consenso.
     Lê train.json e test.json: listas de {"name": caminho relativo ao json, "label": classe}."""
@@ -270,7 +270,7 @@ def _chaoyang(semente):
     tr, va = train_test_split(tr_all, test_size=0.1, stratify=tr_all.rotulo, random_state=semente)   # validação: escolher a época
     tr, va, te = [x.reset_index(drop=True) for x in (tr, va, te)]
     media, desvio = NORMAS["chaoyang"]; norm = transforms.Normalize(media, desvio)
-    T = 64 if C.TESTE_RAPIDO else 224
+    T = 224 if (not C.TESTE_RAPIDO or arq == "vit_b_16") else 64     # o ViT só aceita 224×224
     simples = transforms.Compose([transforms.Resize((T, T)), transforms.ToTensor(), norm])
     aug = transforms.Compose([transforms.Resize((T, T)), transforms.RandomHorizontalFlip(), transforms.RandomVerticalFlip(),
                               transforms.RandomRotation(20), transforms.ColorJitter(0.1, 0.1, 0.1), transforms.ToTensor(), norm])
@@ -287,9 +287,9 @@ def carregar(exp, semente):
     if e["dados"] == "ham10000":
         return _ham(semente, e.get("n_lesoes", C.HAM_N_LESOES))
     if e["dados"] == "animal10n":
-        return _animal10n(semente)
+        return _animal10n(semente, e.get("epocas"))
     if e["dados"] == "chaoyang":
-        return _chaoyang(semente)
+        return _chaoyang(semente, e["arq"])
     return _torchvision(e["dados"], semente, e["ruido"])
 
 

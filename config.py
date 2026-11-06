@@ -25,11 +25,15 @@ SAIDA = Path("resultados")
 
 # ----------------------------------------------------------------------------- o que rodar
 SEMENTES = [42, 7, 2026]                               # cada semente: novo sorteio dos dados + novo treino da rede
-# Seleção do artigo: um cenário por domínio. CIFAR-10 limpo e CIFAR-10N usam AS MESMAS imagens (só os rótulos de treino
+# Seleção do artigo: um dataset por domínio, cada um com 3 redes. CIFAR-10 limpo e CIFAR-10N usam AS MESMAS imagens (só os rótulos de treino
 # mudam), isolando o efeito do ruído real; ANIMAL-10N (web) e Chaoyang (médico) trazem domínios diferentes.
 # Fora do padrão (definidos abaixo, ainda rodáveis com --exp; relatório com --todos): cifar10_vgg16, cifar100_vgg16, mnist,
 # cifar10n_aggre/random1, cifar100n, ham10000*, cifar10_ruido* (ruído sintético), svhn.
-EXPERIMENTOS_PADRAO = ["cifar10", "cifar10n_worst", "animal10n", "chaoyang"]
+EXPERIMENTOS_PADRAO = ["cifar10", "cifar10_vgg16", "cifar10_mobilenet",                         # CIFAR-10 limpo
+                       "cifar10n_worst", "cifar10n_worst_vgg16", "cifar10n_worst_mobilenet",   # CIFAR-10N (pessoas)
+                       "animal10n", "animal10n_resnet32", "animal10n_mobilenet",               # ANIMAL-10N (web)
+                       "chaoyang", "chaoyang_resnet50", "chaoyang_vit"]                        # Chaoyang (médico)
+# 3 redes por dataset: o resultado não pode depender de uma arquitetura só
 
 EXPERIMENTOS = {
     "ham10000":        dict(dados="ham10000", arq="effnet_b0", ruido=0.0, artigo="HAM10000 (mesma configuração do seu BRACIS 2025)"),
@@ -50,6 +54,14 @@ EXPERIMENTOS = {
     "animal10n":        dict(dados="animal10n", arq="vgg16",   ruido=0.0, epocas=60, artigo="ANIMAL-10N (ruído da web, ~8%)"),
     # ruído REAL médico: histopatologia colorretal, rótulos de treino com discordância entre patologistas; teste por consenso
     "chaoyang":         dict(dados="chaoyang", arq="effnet_b0", ruido=0.0, artigo="Chaoyang (patologistas discordam)"),
+    # 3 redes por dataset: as outras duas de cada um (mesmos dados e rótulos; só a arquitetura muda)
+    "cifar10_mobilenet":         dict(dados="cifar10", arq="mobilenet_v2", ruido=0.0, artigo="CIFAR-10 (MobileNetV2)"),
+    "cifar10n_worst_vgg16":      dict(dados="cifar10", arq="vgg16", ruido="humano:worse_label", artigo="CIFAR-10N pior de 3 (VGG-16)"),
+    "cifar10n_worst_mobilenet":  dict(dados="cifar10", arq="mobilenet_v2", ruido="humano:worse_label", artigo="CIFAR-10N pior de 3 (MobileNetV2)"),
+    "animal10n_resnet32":        dict(dados="animal10n", arq="resnet32", ruido=0.0, epocas=60, artigo="ANIMAL-10N (ResNet-32)"),
+    "animal10n_mobilenet":       dict(dados="animal10n", arq="mobilenet_v2", ruido=0.0, epocas=60, artigo="ANIMAL-10N (MobileNetV2)"),
+    "chaoyang_resnet50":         dict(dados="chaoyang", arq="resnet50", ruido=0.0, artigo="Chaoyang (ResNet-50)"),
+    "chaoyang_vit":              dict(dados="chaoyang", arq="vit_b_16", ruido=0.0, artigo="Chaoyang (ViT-B/16)"),
     "cifar10_vgg16":   dict(dados="cifar10",  arq="vgg16",     ruido=0.0, artigo="ConfidNet 2019 / FD-Shifts 2023"),
     "cifar100_vgg16":  dict(dados="cifar100", arq="vgg16",     ruido=0.0, artigo="ConfidNet 2019 / FD-Shifts 2023"),
     "svhn":            dict(dados="svhn",     arq="cnn",       ruido=0.0, artigo="ConfidNet 2019 / FD-Shifts 2023"),
@@ -62,8 +74,8 @@ HAM_FRAC_VAL, HAM_FRAC_TESTE = 0.10, 0.20
 HAM_TAM = 224                  # tamanho da imagem (pixels)
 
 # ----------------------------------------------------------------------------- treino das redes
-EPOCAS = {"effnet_b0": 15, "resnet32": 100, "vgg16": 100, "cnn": 30, "mlp": 20}
-LOTE = {"effnet_b0": 32, "resnet32": 128, "vgg16": 128, "cnn": 128, "mlp": 128}
+EPOCAS = {"effnet_b0": 15, "resnet50": 15, "vit_b_16": 15, "resnet32": 100, "vgg16": 100, "mobilenet_v2": 100, "cnn": 30, "mlp": 20}
+LOTE = {"effnet_b0": 32, "resnet50": 32, "vit_b_16": 32, "resnet32": 128, "vgg16": 128, "mobilenet_v2": 128, "cnn": 128, "mlp": 128}
 TRABALHADORES = 4              # processos do DataLoader (0 se der erro no Windows)
 
 # ----------------------------------------------------------------------------- leitura da rede e métodos

@@ -124,10 +124,57 @@ class MLP(Rede):
         return self.h2(self.h1(x))
 
 
+class MobileNetV2P(Rede):
+    """MobileNetV2 treinada do zero para imagens pequenas (32×32 e 64×64): o 1º passo não reduz a imagem."""
+    def __init__(self, n_classes):
+        super().__init__()
+        from torchvision import models
+        m = models.mobilenet_v2(weights=None, num_classes=n_classes)
+        m.features[0][0].stride = (1, 1)
+        self.features = m.features
+        self.cabeca = nn.Sequential(nn.Dropout(0.2), nn.Linear(1280, n_classes))
+        self.blocos = list(self.features)                              # 19 blocos (entrada + 17 invertidos + saída)
+
+    def corpo(self, x):
+        return F.adaptive_avg_pool2d(self.features(x), 1).flatten(1)
+
+
+class ResNet50(Rede):
+    """ResNet-50 pré-treinada no ImageNet (imagens 224×224)."""
+    def __init__(self, n_classes, pretreinada=True):
+        super().__init__()
+        from torchvision import models
+        m = models.resnet50(weights="IMAGENET1K_V2" if pretreinada else None)
+        self.inicio = nn.Sequential(m.conv1, m.bn1, m.relu, m.maxpool)
+        self.camadas = nn.Sequential(m.layer1, m.layer2, m.layer3, m.layer4)
+        saida = 1 if n_classes == 2 else n_classes
+        self.cabeca = nn.Sequential(nn.Dropout(0.3), nn.Linear(2048, saida))
+        self.blocos = [self.inicio] + [b for c in self.camadas for b in c]   # 17 blocos
+
+    def corpo(self, x):
+        return F.adaptive_avg_pool2d(self.camadas(self.inicio(x)), 1).flatten(1)
+
+
+class ViTB16(Rede):
+    """ViT-B/16 pré-treinado no ImageNet (imagens 224×224). Cada camada do encoder é um bloco; a leitura faz a média dos tokens."""
+    def __init__(self, n_classes, pretreinada=True):
+        super().__init__()
+        from torchvision import models
+        self.vit = models.vit_b_16(weights="IMAGENET1K_V1" if pretreinada else None)
+        self.vit.heads = nn.Identity()
+        saida = 1 if n_classes == 2 else n_classes
+        self.cabeca = nn.Sequential(nn.Dropout(0.1), nn.Linear(768, saida))
+        self.blocos = list(self.vit.encoder.layers)                    # 12 blocos
+
+    def corpo(self, x):
+        return self.vit(x)                                             # token de classe, após a normalização final
+
+
 def criar(arq, n_classes):
-    if arq == "effnet_b0":
-        return EffNetB0(pretreinada=not C.TESTE_RAPIDO, n_classes=n_classes)
-    return {"resnet32": lambda: ResNet32(n_classes), "vgg16": lambda: VGG16(n_classes),
+    pre = not C.TESTE_RAPIDO
+    return {"effnet_b0": lambda: EffNetB0(pretreinada=pre, n_classes=n_classes),
+            "resnet50": lambda: ResNet50(n_classes, pretreinada=pre), "vit_b_16": lambda: ViTB16(n_classes, pretreinada=pre),
+            "resnet32": lambda: ResNet32(n_classes), "vgg16": lambda: VGG16(n_classes), "mobilenet_v2": lambda: MobileNetV2P(n_classes),
             "cnn": lambda: CNNPequena(n_classes), "mlp": lambda: MLP(n_classes)}[arq]()
 
 
@@ -149,10 +196,11 @@ def treinar(rede, conj, arq, semente, disp, log=print):
     lote = C.LOTE[arq]
     dl = carregador(conj.treino, lote, embaralhar=True)
     rede.to(disp)
-    if arq == "effnet_b0":
-        opt = torch.optim.AdamW(rede.parameters(), lr=3e-4, weight_decay=1e-4)
-    elif arq in ("resnet32", "vgg16"):
-        opt = torch.optim.SGD(rede.parameters(), lr=0.1 if arq == "resnet32" else 0.05, momentum=0.9, weight_decay=5e-4, nesterov=True)
+    if arq in ("effnet_b0", "resnet50", "vit_b_16"):                   # pré-treinadas: ajuste fino com AdamW
+        opt = torch.optim.AdamW(rede.parameters(), lr={"effnet_b0": 3e-4, "resnet50": 1e-4, "vit_b_16": 3e-5}[arq], weight_decay=1e-4)
+    elif arq in ("resnet32", "vgg16", "mobilenet_v2"):
+        opt = torch.optim.SGD(rede.parameters(), lr={"resnet32": 0.1, "vgg16": 0.05, "mobilenet_v2": 0.05}[arq],
+                              momentum=0.9, weight_decay=5e-4 if arq != "mobilenet_v2" else 4e-5, nesterov=True)
     else:
         opt = torch.optim.Adam(rede.parameters(), lr=1e-3)
     sched = torch.optim.lr_scheduler.OneCycleLR(opt, max_lr=opt.param_groups[0]["lr"], total_steps=epocas * len(dl), pct_start=0.15)
