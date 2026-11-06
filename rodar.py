@@ -160,6 +160,7 @@ def preparar_teste_rapido():
     C.SAIDA = C.SAIDA.parent / "resultados_teste_rapido"
     C.HAM_DIR = C.SAIDA.parent / "dados_falsos" / "ham10000"
     C.N_REF, C.N_BOOT, C.T_MC, C.HAM_N_LESOES, C.TRABALHADORES = 200, 50, 5, 300, 0
+    C.LOTE = {k: min(v, 8) for k, v in C.LOTE.items()}            # lotes pequenos: cabe na memória da CPU (ViT a 224 px)
     if not (C.HAM_DIR / "HAM10000_metadata.csv").exists():
         r = np.random.default_rng(0); linhas = []; k = 0
         for p in ("HAM10000_images_part_1", "HAM10000_images_part_2"):
