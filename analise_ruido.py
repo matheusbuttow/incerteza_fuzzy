@@ -43,8 +43,9 @@ def main():
             if yg.sum() >= 5:
                 for m in METODOS:
                     lin[f"confiantes: {m}"] = roc_auc_score(yg, E[m].values[g])
-                s, _ = ac.fuzzy_no_grupo(G, [c for c in ac.INTERNAS if c in G], 3, False, sem)
-                lin["confiantes: NOSSO: fuzzy só dos confiantes"] = roc_auc_score(yg[~np.isnan(s)], s[~np.isnan(s)])
+                s, _ = ac.fuzzy_no_grupo(G, [c for c in ac.INTERNAS if c in G], 3, False, sem); ok = ~np.isnan(s)
+                if ok.any() and len(np.unique(yg[ok])) == 2:
+                    lin["confiantes: NOSSO: fuzzy só dos confiantes"] = roc_auc_score(yg[ok], s[ok])
             L.append(lin)
             print(f"  ruído {nivel}{'' if exp in HUMANOS else '%'} semente {sem}: erro {y.mean():.3f} | nosso {lin['todas: NOSSO: Fuzzy aditivo']:.3f} "
                   f"× softmax {lin['todas: Softmax (MSP)']:.3f}", flush=True)
