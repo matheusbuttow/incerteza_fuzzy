@@ -37,11 +37,11 @@ hallucinat* OR overconfiden*)}}
 % Cada busca já inclui o bloco de redes neurais. O diagrama calcula sozinho o número de cada região.
 \newcommand{\buscaUm}{0}     % 1: só erro confiante      (N AND E)
 \newcommand{\buscaDois}{0}   % 2: só fuzzy               (N AND F)
-\newcommand{\buscaTres}{0}   % 3: só ruído               (N AND R)
+\newcommand{\buscaTres}{0}   % 3: só camadas internas   (N AND I)
 \newcommand{\buscaQuatro}{0} % 4: erro confiante + fuzzy (N AND E AND F) = a string principal acima
-\newcommand{\buscaCinco}{0}  % 5: erro confiante + ruído (N AND E AND R)
-\newcommand{\buscaSeis}{0}   % 6: fuzzy + ruído          (N AND F AND R)
-\newcommand{\buscaSete}{0}   % 7: os três juntos         (N AND E AND F AND R)
+\newcommand{\buscaCinco}{0}  % 5: erro + camadas internas (N AND E AND I)
+\newcommand{\buscaSeis}{0}   % 6: fuzzy + camadas internas (N AND F AND I)
+\newcommand{\buscaSete}{0}   % 7: os três juntos         (N AND E AND F AND I)
 % ---------------------------------------------------------------------
 \begin{figure}[t]
 \centering
@@ -55,7 +55,7 @@ hallucinat* OR overconfiden*)}}
   \draw[green!40!black]  (0,-0.80) circle (\r);
   \node[align=center,blue!50!black]   at (-2.05, 2.05) {(E) Incerteza /\\erro confiante};
   \node[orange!70!black]              at ( 1.65, 1.95) {(F) Fuzzy};
-  \node[green!35!black]               at ( 0,-2.40) {(R) Rótulos ruidosos};
+  \node[green!35!black]               at ( 0,-2.40) {(I) Camadas internas};
   % regiões exclusivas (inclusão--exclusão sobre os 7 totais)
   \node at (-1.25, 0.70) {\the\numexpr\buscaUm-\buscaQuatro-\buscaCinco+\buscaSete\relax};
   \node at ( 1.25, 0.70) {\the\numexpr\buscaDois-\buscaQuatro-\buscaSeis+\buscaSete\relax};
@@ -68,8 +68,8 @@ hallucinat* OR overconfiden*)}}
 \end{tikzpicture}
 \caption{Estudos encontrados na \textbf{[biblioteca]} (2021 em diante) para cada combinação dos três temas. Cada busca une com AND o
 bloco N e os blocos de cada região. N: \texttt{"deep learning" OR CNN}; E: \texttt{uncertainty
-OR confidence OR certainty OR hallucinat* OR overconfiden*}; F: \texttt{fuzzy}; R: \texttt{"noisy label*" OR "label noise" OR "noisy
-data" OR mislabel*}.}
+OR confidence OR certainty OR hallucinat* OR overconfiden*}; F: \texttt{fuzzy}; I: \texttt{"intermediate layer*" OR "internal
+representation*" OR "intermediate feature*" OR "linear probe*" OR "probing classifier*" OR "layer-wise"}.}
 \label{fig:venn}
 \end{figure}
 % (Escreva aqui 1–2 frases sobre a Fig.~\ref{fig:venn}: cada tema sozinho tem muitos estudos; a interseção dos três tem N.)
