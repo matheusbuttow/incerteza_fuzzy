@@ -53,9 +53,9 @@ hallucinat* OR overconfiden*)}}
   \draw[blue!60!black]   (-0.72, 0.42) circle (\r);
   \draw[orange!80!black] ( 0.72, 0.42) circle (\r);
   \draw[green!40!black]  (0,-0.80) circle (\r);
-  \node[align=center,blue!50!black]   at (-2.05, 2.05) {Incerteza /\\erro confiante};
-  \node[orange!70!black]              at ( 1.65, 1.95) {Fuzzy};
-  \node[green!35!black]               at ( 0,-2.40) {Rótulos ruidosos};
+  \node[align=center,blue!50!black]   at (-2.05, 2.05) {(E) Incerteza /\\erro confiante};
+  \node[orange!70!black]              at ( 1.65, 1.95) {(F) Fuzzy};
+  \node[green!35!black]               at ( 0,-2.40) {(R) Rótulos ruidosos};
   % regiões exclusivas (inclusão--exclusão sobre os 7 totais)
   \node at (-1.25, 0.70) {\the\numexpr\buscaUm-\buscaQuatro-\buscaCinco+\buscaSete\relax};
   \node at ( 1.25, 0.70) {\the\numexpr\buscaDois-\buscaQuatro-\buscaSeis+\buscaSete\relax};
@@ -66,8 +66,10 @@ hallucinat* OR overconfiden*)}}
   \node[font=\footnotesize\bfseries] (c) at (0, 0.02) {\buscaSete};
   \draw[->,gray] (2.05,-0.55) node[right,align=left,black]{este\\trabalho} -- (0.22,0.0);
 \end{tikzpicture}
-\caption{Estudos encontrados na Scopus (2021 em diante) para cada combinação dos três temas. Todas as buscas incluem o bloco de redes
-neurais.}
+\caption{Estudos encontrados na \textbf{[biblioteca]} (2021 em diante) para cada combinação dos três temas. Cada busca une com AND o
+bloco N e os blocos de cada região. N: \texttt{"neural network*" OR "deep learning" OR "machine learning" OR CNN}; E: \texttt{uncertainty
+OR confidence OR certainty OR hallucinat* OR overconfiden*}; F: \texttt{fuzzy}; R: \texttt{"noisy label*" OR "label noise" OR "noisy
+data" OR mislabel*}.}
 \label{fig:venn}
 \end{figure}
 % (Escreva aqui 1–2 frases sobre a Fig.~\ref{fig:venn}: cada tema sozinho tem muitos estudos; a interseção dos três tem N.)
