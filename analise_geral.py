@@ -75,7 +75,7 @@ def por_rodada(lista, frac_conf):
         E = pd.read_csv(d / "escores.csv.gz"); F = pd.read_csv(d / "features.csv.gz")
         y = E.erro.values.astype(int)
         if y.sum() < 10 or (1 - y).sum() < 10:
-            print(f"  (pulando {exp} semente {sem}: só {y.sum()} erros)"); continue
+            print(f"  (pulando {exp} semente {sem}: {y.sum()} erros e {(1 - y).sum()} acertos — poucos para comparar)"); continue
         metodos = [m for m in [NOSSO, NOSSO_1P] + list(LIT) if m in E and E[m].notna().all()]
         base = {"experimento": exp, "dataset": ds, "rede": arq, "semente": sem, "erro da rede": y.mean(),
                 "rótulos de treino errados": C.GRADE_DADOS[ds][4], "imagens": len(y), "erros": int(y.sum())}
@@ -138,7 +138,8 @@ def figura_mapa(cel, arq):
     for i in range(M.shape[0]):
         for j in range(M.shape[1]):
             if np.isfinite(M.values[i, j]):
-                ax.text(j, i, f"{M.values[i, j]:+.3f}", ha="center", va="center", fontsize=8)
+                ax.text(j, i, f"{M.values[i, j]:+.3f}", ha="center", va="center", fontsize=8,
+                        color="white" if abs(M.values[i, j]) > 0.6 * v else "black")
     ax.set_xticks(range(M.shape[1])); ax.set_xticklabels([NOME_REDE[r] for r in M.columns], fontsize=8)
     ax.set_yticks(range(M.shape[0])); ax.set_yticklabels([C.GRADE_DADOS[d][3] for d in M.index], fontsize=8)
     ax.set_title("AUROC: nosso − melhor método da literatura (azul = nosso ganha)", fontsize=9)
@@ -249,8 +250,9 @@ def main():
     vt = V[["vitória", "empate", "derrota"]].sum()
     L.append(f"\n2. CONTRA CADA MÉTODO (DeLong, p < 0,05, por rodada): {vt['vitória']} vitórias, {vt['empate']} empates, {vt['derrota']} derrotas.")
     for (m, fam), r in V.iterrows():
-        L.append(f"   {m:28s} [{fam}]: {r['vitória']}V {r['empate']}E {r['derrota']}D | diferença média {r['diferença média de AUROC']:+.3f}")
+        L.append(f"   {m:28s} [{fam}]: {int(r['vitória'])}V {int(r['empate'])}E {int(r['derrota'])}D | diferença média {r['diferença média de AUROC']:+.3f}")
     b, w = ordem.iloc[0], ordem.iloc[-1]
+    L.append("\n   (\"Melhor da literatura\" = o melhor dos métodos da literatura EM CADA combinação; é um adversário otimista, que muda de caso a caso.)")
     L.append(f"\n3. MELHOR CASO: {C.GRADE_DADOS[b.dataset][3]} + {NOME_REDE[b.rede]}: nosso {f3(b[NOSSO])} × melhor da literatura "
              f"{f3(b['AUROC melhor da literatura'])} ({b['melhor da literatura']}), ganho {b['ganho sobre o melhor da literatura']:+.3f}; "
              f"sobre o softmax {b['ganho sobre o softmax']:+.3f}.")
@@ -261,7 +263,7 @@ def main():
     if len(perde):
         L.append(f"   Combinações em que algum método da literatura passa o nosso ({len(perde)}): " +
                  "; ".join(f"{C.GRADE_DADOS[r.dataset][3]}+{NOME_REDE[r.rede]} ({r['melhor da literatura']}, {r['ganho sobre o melhor da literatura']:+.3f})"
-                           for r in perde.itertuples(index=False) if True))
+                           for _, r in perde.iterrows()))
     L.append("\n4. O GANHO ACOMPANHA O RUÍDO? (Spearman nas combinações)")
     for r in corr.itertuples(index=False):
         L.append(f"   {r[0]} × {r[1]}: ρ = {r[2]:+.2f} (p = {r[3]:.2g})")
