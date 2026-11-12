@@ -1,65 +1,95 @@
 % =====================================================================
-% revisao_sistematica.tex — ESQUELETO da revisão sistemática (PRISMA 2020), cabe em 1 página em coluna dupla.
-% Uso no main_pt.tex: \input{revisao_sistematica} no lugar da subseção "Sistemas fuzzy e incerteza de redes".
-% Precisa no preâmbulo: \usepackage{tikz} \usetikzlibrary{positioning}
-% Os textos entre colchetes [...] são para VOCÊ escrever. Os números N1..N4 vêm das suas buscas.
-% Orçamento de espaço (1 página = 2 colunas):
-%   figura da pirâmide ............ ~1/3 de coluna
-%   tabela das 4 etapas ........... ~1/3 de coluna
-%   texto ......................... ~1 coluna e 1/3 (≈ 600–700 palavras no total)
+% revisao_sistematica.tex — revisão sistemática (Parsifal). Entra logo abaixo de \section{Trabalhos Relacionados}.
+% Marcadores para preencher: XXXX (números do Parsifal), as duas figuras e o número de artigos por extenso.
 % =====================================================================
 
-\subsection{Revisão sistemática}
+This systematic literature review was conducted using the Parsifal software. The first stage of the study involved defining the title and
+objective of the research.
+
+\subsection{Research Questions}
+
+Subsequently, the following research questions were defined to guide which topics would be discussed in the selected final articles:
+
+\begin{itemize}
+\item[1)] quais são as aplicações atuais da integração de sistemas fuzzy com a incerteza das redes neurais profundas?
+\item[2)] como a incerteza das redes neurais implementadas em sistemas fuzzy está sendo aplicada para enfrentar desafios específicos em
+áreas de aprendizado de máquina?
+\item[3)] quais são os avanços recentes na integração de redes neurais com a incerteza ou certeza, e como esses avanços podem ajudar na
+classificação?
+\item[4)] quais são os desafios e limitações que os modelos de redes neurais profundas enfrentam para reconhecer quando erram com alta
+confiança, e como (ou se) sistemas fuzzy têm sido usados para estimar essa incerteza?
+\end{itemize}
+
+\subsection{Search String and Digital Libraries}
+
+Then, the study's keywords were defined: ``Neural Networks'', ``deep learning'', ``machine learning'', ``fuzzy'', ``uncertainty'' and
+``confidence''. The resulting search string was:
+
+\begin{center}
+\fbox{\parbox{0.94\columnwidth}{\footnotesize\ttfamily
+("neural network*" OR "deep learning" OR "machine learning" OR CNN) AND fuzzy AND (uncertainty OR confidence OR certainty OR
+hallucinat* OR overconfiden*)}}
+\end{center}
+% (ScienceDirect não aceita * e limita os conectores: se a string foi adaptada lá, citar em uma frase.)
+
+The search string was used to filter articles in the following digital libraries: ACM Digital Library, IEEE Xplore, ScienceDirect and
+Scopus. After the initial compilation of studies from the libraries, the articles were directly exported to Parsifal, with a total amount
+of \textbf{XXXX} studies selected at the import stage.
+
+\subsection{Selection Process}
 \label{sec:revisao}
 
-% --- Parágrafo 1 (~80 palavras): pergunta da revisão e protocolo (PRISMA 2020, item 3–4 do checklist)
-[Pergunta que a revisão responde. Bases consultadas e data da busca. Que segue o PRISMA 2020~\cite{page2021}.]
-
-% --- Parágrafo 2 (~150 palavras): as 4 etapas de refinamento (itens 5–8 do checklist)
-[Como cada etapa restringe a anterior: o termo ou critério acrescentado em cada uma e por quê.
-Critérios de inclusão e exclusão. Quem fez a triagem.]
-
-\begin{table}[t]
-\centering
-\caption{As quatro etapas de refinamento da busca no IEEE Xplore (campo \textit{Abstract}).}
-\label{tab:etapas_revisao}
-\footnotesize
-\setlength{\tabcolsep}{3pt}
-\begin{tabular}{@{}cp{0.72\columnwidth}r@{}}
-\toprule
-Etapa & Critério acrescentado & Artigos \\
-\midrule
-1 & incerteza ou confiança + redes neurais (CNN, \textit{deep learning}) & 19.738 \\
-2 & + fuzzy & 1.590 \\
-3 & + erro com alta confiança (alucinação, \textit{overconfidence}, \textit{misclassification}) & 9 \\
-4 & leitura completa e critérios de inclusão & 5 \\
-\midrule
-\multicolumn{3}{@{}p{0.95\columnwidth}@{}}{\scriptsize Acrescentar à Etapa 3 o bloco de rótulos ruidosos (\textit{noisy labels}, \textit{label noise}) retorna 0 artigos.} \\
-\bottomrule
-\end{tabular}
-\end{table}
+Following the databases search identifying \textbf{XXXX} articles, the strategy to filter the main studies is summarized in the
+flowchart shown in Fig.~\ref{fig:fluxo}. Initially, duplicate studies were removed, prioritizing the counting of articles in the
+databases where they were originally published. Subsequently, all articles went through the following exclusion criteria (CE):
 
 \begin{figure}[t]
 \centering
-\begin{tikzpicture}[x=\columnwidth/8.6, y=0.62cm, font=\footnotesize]
-  % pirâmide invertida: cada faixa é um trapézio mais estreito que o de cima
-  \def\faixa#1#2#3#4#5{%  #1 nível (0 = topo)  #2 meia-largura em cima  #3 meia-largura embaixo  #4 cor  #5 texto
-    \fill[#4] (-#2,-#1) -- (#2,-#1) -- (#3,-#1-1) -- (-#3,-#1-1) -- cycle;
-    \node[align=center] at (0,-#1-0.5) {#5};}
-  \faixa{0}{4.2}{3.4}{blue!45}{Etapa 1 \quad $n = 19.738$}
-  \faixa{1}{3.4}{2.6}{blue!35}{Etapa 2 \quad $n = 1.590$}
-  \faixa{2}{2.6}{1.8}{blue!25}{Etapa 3 \quad $n = 9$}
-  \faixa{3}{1.8}{1.0}{blue!15}{Etapa 4 \quad $n = 5$}
-\end{tikzpicture}
-\caption{Refinamento da busca em quatro etapas. [Uma frase sua sobre o que sobra no fim.]}
-\label{fig:piramide}
+\IfFileExists{figuras/fluxograma_revisao.png}{\includegraphics[width=\columnwidth]{figuras/fluxograma_revisao.png}}{%
+\fbox{\parbox[c][3.2cm][c]{0.92\columnwidth}{\centering\textcolor{gray}{Fluxograma de filtro de artigos\\
+(salvar como figuras/fluxograma\_revisao.png)}}}}
+\caption{Processo de seleção dos estudos.}
+\label{fig:fluxo}
 \end{figure}
 
-% --- Parágrafo 3 (~200 palavras): o que os N4 artigos fazem (itens 17–20 do checklist)
-[Agrupe os artigos incluídos por forma de uso do fuzzy (dentro da rede, sobre a saída, na agregação...).
-Quantos em cada grupo. Exemplos, com as citações.]
+\begin{list}{}{\setlength{\leftmargin}{2.9em}\setlength{\labelwidth}{2.5em}\setlength{\labelsep}{0.4em}}
+\item[CE1:] estudos publicados antes de 2021;
+\item[CE2:] estudos que não são artigos completos revisados por pares (resumos, pôsteres, capítulos, teses e revisões de literatura);
+\item[CE3:] estudos em que o fuzzy não faz parte do método ou que não tratam incerteza ou confiança de redes neurais.
+\end{list}
 
-% --- Parágrafo 4 (~100 palavras): a lacuna (itens 23–24 do checklist)
-[O que nenhum dos incluídos faz e que este artigo faz.]
+Na etapa seguinte, conforme apresentado no fluxograma, os estudos foram submetidos a uma análise de qualidade, detalhada na
+Seção~\ref{sec:qualidade}, sendo mantidos aqueles que obtiveram pontuação máxima. Por fim, os \textbf{[número por extenso]} artigos
+selecionados foram analisados para concluir o estudo, fornecendo uma resposta adequada às questões de pesquisa inicialmente propostas.
 
-% --- Opcional, se sobrar espaço: limitações da revisão (item 23c) em 1–2 frases.
+\subsection{Libraries Distribution from Exclusion Criteria}
+
+Ao aplicar os critérios de exclusão e comparar os artigos iniciais com aqueles que permaneceram após a aplicação dos filtros CE1, CE2 e
+CE3, foi elaborado o gráfico da Fig.~\ref{fig:bibliotecas}. À esquerda, ele apresenta o percentual de estudos importados de cada
+biblioteca digital; à direita, o percentual de artigos remanescentes após a aplicação dos critérios de exclusão.
+
+\begin{figure}[t]
+\centering
+\IfFileExists{figuras/bibliotecas_revisao.png}{\includegraphics[width=\columnwidth]{figuras/bibliotecas_revisao.png}}{%
+\fbox{\parbox[c][3.2cm][c]{0.92\columnwidth}{\centering\textcolor{gray}{Gráficos de pizza: importados (esquerda) e remanescentes
+após CE1--CE3 (direita)\\(salvar como figuras/bibliotecas\_revisao.png)}}}}
+\caption{Distribuição dos estudos por biblioteca digital: importados (esquerda) e remanescentes após os critérios de exclusão (direita).}
+\label{fig:bibliotecas}
+\end{figure}
+
+Inicialmente, observa-se que a biblioteca ACM Digital Library (em verde) apresenta o maior percentual de artigos importados. Entretanto,
+após a aplicação dos critérios de exclusão, a biblioteca Scopus (em azul) passa a predominar, seguida pela IEEE Xplore (em amarelo).
+
+\subsection{Quality Assessment}
+\label{sec:qualidade}
+
+% Perguntas sugeridas (nota 0 = não, 0,5 = em parte, 1 = sim). Ajuste ao que você cadastrou no Parsifal.
+Os estudos remanescentes foram avaliados pelas seguintes questões de qualidade (QA), com nota 0 (não), 0,5 (em parte) ou 1 (sim):
+
+\begin{list}{}{\setlength{\leftmargin}{2.9em}\setlength{\labelwidth}{2.5em}\setlength{\labelsep}{0.4em}}
+\item[QA1:] o objetivo do estudo está claro?
+\item[QA2:] o método está descrito com detalhe suficiente para ser reproduzido?
+\item[QA3:] os experimentos usam datasets públicos?
+\item[QA4:] o método é comparado com outras abordagens?
+\item[QA5:] o estudo mede a incerteza ou o erro da rede (por exemplo, AUROC ou calibração), e não só a acurácia?
+\end{list}
