@@ -68,6 +68,47 @@ EXPERIMENTOS = {
     "mnist":           dict(dados="mnist",    arq="mlp",       ruido=0.0, artigo="ConfidNet 2019"),
 }
 
+# ----------------------------------------------------------------------------- GRADE: vários datasets × as mesmas 4 redes
+# Usada pelo rodar_3dias.sh e pelo analise_geral.py. Ordem = prioridade (se o tempo acabar, o mais importante já rodou).
+# (dados, ruído dos rótulos de treino, épocas próprias ou None, nome no artigo, fração de rótulos de treino errados)
+GRADE_DADOS = {
+    "cifar10n_worst":   ("cifar10",  "humano:worse_label",   None, "CIFAR-10N pior de 3",  0.402),
+    "cifar10":          ("cifar10",  0.0,                    None, "CIFAR-10",             0.0),
+    "cifar100n":        ("cifar100", "humano:noisy_label",   None, "CIFAR-100N",           0.402),
+    "cifar10n_random1": ("cifar10",  "humano:random_label1", None, "CIFAR-10N 1 pessoa",   0.172),
+    "cifar10n_aggre":   ("cifar10",  "humano:aggre_label",   None, "CIFAR-10N voto de 3",  0.090),
+    "cifar100":         ("cifar100", 0.0,                    None, "CIFAR-100",            0.0),
+    "fashion32":        ("fashion32", 0.0,                   30,   "Fashion-MNIST",        0.0),
+    "svhn":             ("svhn",     0.0,                    40,   "SVHN",                 0.0),
+    "mnist32":          ("mnist32",  0.0,                    15,   "MNIST",                0.0),
+    "animal10n":        ("animal10n", 0.0,                   60,   "ANIMAL-10N",           0.08),   # só roda se dados/animal10n existir
+}
+GRADE_REDES = ["resnet32", "vgg16", "mobilenet_v2", "cnn"]
+# nomes que já existiam: reaproveitam o que já rodou em resultados/
+_ALIAS = {("cifar10", "resnet32"): "cifar10", ("cifar10", "vgg16"): "cifar10_vgg16", ("cifar10", "mobilenet_v2"): "cifar10_mobilenet",
+          ("cifar10n_worst", "resnet32"): "cifar10n_worst", ("cifar10n_worst", "vgg16"): "cifar10n_worst_vgg16",
+          ("cifar10n_worst", "mobilenet_v2"): "cifar10n_worst_mobilenet", ("cifar10n_aggre", "resnet32"): "cifar10n_aggre",
+          ("cifar10n_random1", "resnet32"): "cifar10n_random1", ("cifar100n", "vgg16"): "cifar100n",
+          ("cifar100", "vgg16"): "cifar100_vgg16", ("animal10n", "vgg16"): "animal10n",
+          ("animal10n", "resnet32"): "animal10n_resnet32", ("animal10n", "mobilenet_v2"): "animal10n_mobilenet",
+          ("svhn", "cnn"): "svhn"}
+
+
+def nome_grade(ds, arq):
+    return _ALIAS.get((ds, arq), f"{ds}_{arq}")
+
+
+EXPERIMENTOS_GRADE = []                 # em ordem de prioridade
+GRADE_INFO = {}                         # experimento -> (dataset da grade, rede)
+for _ds, (_dados, _ruido, _ep, _nome, _frac) in GRADE_DADOS.items():
+    for _arq in GRADE_REDES:
+        _n = nome_grade(_ds, _arq)
+        if _n not in EXPERIMENTOS:
+            EXPERIMENTOS[_n] = dict(dados=_dados, arq=_arq, ruido=_ruido, artigo=f"{_nome} ({_arq})", **({"epocas": _ep} if _ep else {}))
+        elif _ep and "epocas" not in EXPERIMENTOS[_n]:
+            EXPERIMENTOS[_n]["epocas"] = _ep
+        EXPERIMENTOS_GRADE.append(_n); GRADE_INFO[_n] = (_ds, _arq)
+
 # ----------------------------------------------------------------------------- HAM10000
 HAM_N_LESOES = 3000            # lesões diferentes (uma imagem por lesão); None = todas (~7.400)
 HAM_FRAC_VAL, HAM_FRAC_TESTE = 0.10, 0.20

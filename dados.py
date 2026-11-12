@@ -26,7 +26,11 @@ NORMAS = {"cifar10": ((0.4914, 0.4822, 0.4465), (0.247, 0.243, 0.261)),
           "mnist": ((0.1307,), (0.3081,)),
           "ham10000": ((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))}
 NORMAS["animal10n"] = NORMAS["chaoyang"] = ((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))   # médias do ImageNet
-N_CLASSES = {"cifar10": 10, "cifar100": 100, "svhn": 10, "mnist": 10, "ham10000": 2, "animal10n": 10, "chaoyang": 4}
+# tons de cinza levados a 32×32 e 3 canais: as mesmas redes da grade (ResNet-32, VGG-16, MobileNetV2, CNN) servem sem mudança
+NORMAS["mnist32"] = ((0.1307,) * 3, (0.3081,) * 3)
+NORMAS["fashion32"] = ((0.2860,) * 3, (0.3530,) * 3)
+N_CLASSES = {"cifar10": 10, "cifar100": 100, "svhn": 10, "mnist": 10, "ham10000": 2, "animal10n": 10, "chaoyang": 4,
+             "mnist32": 10, "fashion32": 10}
 
 
 # ----------------------------------------------------------------------------- vistas (TTA), aplicadas no tensor já normalizado
@@ -51,6 +55,8 @@ VISTAS["cifar100"] = VISTAS["cifar10"]
 VISTAS["animal10n"] = {"original": lambda x: x, "espelho_h": lambda x: torch.flip(x, [3]),
                        "desloca_+4": _desloca(4, 4), "desloca_-4": _desloca(-4, -4)}      # 64×64: deslocamento proporcional
 VISTAS["chaoyang"] = VISTAS["ham10000"]                                                  # lâmina: espelhos e giro não mudam a classe
+VISTAS["fashion32"] = VISTAS["cifar10"]                                                  # roupa espelhada continua a mesma peça
+VISTAS["mnist32"] = VISTAS["mnist"]                                                      # dígitos: só deslocamentos (sem espelho)
 
 
 # ----------------------------------------------------------------------------- utilidades
@@ -140,20 +146,26 @@ def _ruido(y, frac, n_classes, rng):
 
 
 # ----------------------------------------------------------------------------- conjuntos
-def _torchvision(nome, semente, ruido):
+def _torchvision(nome, semente, ruido, epocas=None):
     media, desvio = NORMAS[nome]
     norm = transforms.Normalize(media, desvio)
     k = N_CLASSES[nome]
+    cinza32 = nome in ("mnist32", "fashion32")                   # 28×28 cinza -> 32×32 com 3 canais
+    pre = [transforms.Pad(2), transforms.Grayscale(3)] if cinza32 else []
     if nome == "mnist":
         aug = transforms.Compose([transforms.RandomCrop(28, padding=2), transforms.ToTensor(), norm])
+    elif nome == "mnist32":
+        aug = transforms.Compose(pre + [transforms.RandomCrop(32, padding=2), transforms.ToTensor(), norm])
+    elif nome == "fashion32":
+        aug = transforms.Compose(pre + [transforms.RandomCrop(32, padding=2), transforms.RandomHorizontalFlip(), transforms.ToTensor(), norm])
     elif nome == "svhn":
         aug = transforms.Compose([transforms.RandomCrop(32, padding=4), transforms.ToTensor(), norm])
     else:
         aug = transforms.Compose([transforms.RandomCrop(32, padding=4), transforms.RandomHorizontalFlip(), transforms.ToTensor(), norm])
-    simples = transforms.Compose([transforms.ToTensor(), norm])
+    simples = transforms.Compose(pre + [transforms.ToTensor(), norm])
 
     if C.TESTE_RAPIDO:                                    # dados falsos, só para testar o código
-        forma = (1, 28, 28) if nome == "mnist" else (3, 32, 32)
+        forma = (1, 28, 28) if nome in ("mnist", "mnist32", "fashion32") else (3, 32, 32)
         mk = lambda n, t, off: datasets.FakeData(n, forma, k, transform=t, random_offset=off)
         tr_aug, tr, te = mk(600, aug, 0), mk(600, simples, 0), mk(300, simples, 10_000)
     else:
@@ -162,7 +174,8 @@ def _torchvision(nome, semente, ruido):
             mk = lambda split, t: datasets.SVHN(raiz, split=split, download=True, transform=t)
             tr_aug, tr, te = mk("train", aug), mk("train", simples), mk("test", simples)
         else:
-            cls = {"cifar10": datasets.CIFAR10, "cifar100": datasets.CIFAR100, "mnist": datasets.MNIST}[nome]
+            cls = {"cifar10": datasets.CIFAR10, "cifar100": datasets.CIFAR100, "mnist": datasets.MNIST, "mnist32": datasets.MNIST,
+                   "fashion32": datasets.FashionMNIST}[nome]
             mk = lambda train, t: cls(raiz, train=train, download=True, transform=t)
             tr_aug, tr, te = mk(True, aug), mk(True, simples), mk(False, simples)
 
@@ -179,7 +192,7 @@ def _torchvision(nome, semente, ruido):
     ref = rng.choice(len(tr), size=min(C.N_REF, len(tr)), replace=False)
     meta = pd.DataFrame({"indice": np.arange(len(te)), "rotulo": y_te})
     return Conjunto(nome, k, ComRotulos(tr_aug, y_tr), ComRotulos(tr, y_tr, ref), ComRotulos(te, y_te),
-                    y_ref=y_tr[ref], y_teste=y_te, meta_teste=meta, vistas=VISTAS[nome])
+                    y_ref=y_tr[ref], y_teste=y_te, meta_teste=meta, vistas=VISTAS[nome], epocas=epocas)
 
 
 def _ham(semente, n_lesoes):
@@ -290,7 +303,7 @@ def carregar(exp, semente):
         return _animal10n(semente, e.get("epocas"))
     if e["dados"] == "chaoyang":
         return _chaoyang(semente, e["arq"])
-    return _torchvision(e["dados"], semente, e["ruido"])
+    return _torchvision(e["dados"], semente, e["ruido"], e.get("epocas"))
 
 
 def carregador(ds, lote, embaralhar=False):
