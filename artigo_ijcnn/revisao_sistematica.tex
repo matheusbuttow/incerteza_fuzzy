@@ -53,9 +53,9 @@ hallucinat* OR overconfiden*)}}
   \draw[blue!60!black]   (-0.72, 0.42) circle (\r);
   \draw[orange!80!black] ( 0.72, 0.42) circle (\r);
   \draw[green!40!black]  (0,-0.80) circle (\r);
-  \node[align=center,blue!50!black]   at (-2.05, 2.05) {(E) Incerteza /\\erro confiante};
-  \node[orange!70!black]              at ( 1.65, 1.95) {(F) Fuzzy};
-  \node[green!35!black]               at ( 0,-2.40) {(I) Camadas internas};
+  \node[align=center,blue!50!black]   at (-2.05, 2.25) {(E) Incerteza /\\erro confiante\\(total: \buscaUm)};
+  \node[orange!70!black]              at ( 1.75, 1.95) {(F) Fuzzy (total: \buscaDois)};
+  \node[green!35!black]               at ( 0,-2.40) {(I) Camadas internas (total: \buscaTres)};
   % regiões exclusivas (inclusão--exclusão sobre os 7 totais)
   \node at (-1.25, 0.70) {\the\numexpr\buscaUm-\buscaQuatro-\buscaCinco+\buscaSete\relax};
   \node at ( 1.25, 0.70) {\the\numexpr\buscaDois-\buscaQuatro-\buscaSeis+\buscaSete\relax};
