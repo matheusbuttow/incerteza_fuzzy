@@ -33,14 +33,14 @@ hallucinat* OR overconfiden*)}}
 % (ScienceDirect não aceita * e limita os conectores: se a string foi adaptada lá, citar em uma frase.)
 
 % ---------------------------------------------------------------------
-% DIAGRAMA DE VENN — digite aqui os TOTAIS das 7 buscas (Scopus, 2021 em diante).
+% DIAGRAMA DE VENN — digite aqui os TOTAIS das 7 buscas (IEEE Xplore, campo Abstract, 2021 em diante).
 % Cada busca já inclui o bloco de redes neurais. O diagrama calcula sozinho o número de cada região.
-\newcommand{\buscaUm}{0}     % 1: só erro confiante      (N AND E)
-\newcommand{\buscaDois}{0}   % 2: só fuzzy               (N AND F)
-\newcommand{\buscaTres}{0}   % 3: só camadas internas   (N AND I)
-\newcommand{\buscaQuatro}{0} % 4: erro confiante + fuzzy (N AND E AND F) = a string principal acima
-\newcommand{\buscaCinco}{0}  % 5: erro + camadas internas (N AND E AND I)
-\newcommand{\buscaSeis}{0}   % 6: fuzzy + camadas internas (N AND F AND I)
+\newcommand{\buscaUm}{6118}     % 1: só erro confiante      (N AND E)
+\newcommand{\buscaDois}{1805}   % 2: só fuzzy               (N AND F)
+\newcommand{\buscaTres}{989}   % 3: só camadas internas   (N AND I)
+\newcommand{\buscaQuatro}{268} % 4: erro confiante + fuzzy (N AND E AND F) = a string principal acima
+\newcommand{\buscaCinco}{38}  % 5: erro + camadas internas (N AND E AND I)
+\newcommand{\buscaSeis}{2}   % 6: fuzzy + camadas internas (N AND F AND I)
 \newcommand{\buscaSete}{0}   % 7: os três juntos         (N AND E AND F AND I)
 % ---------------------------------------------------------------------
 \begin{figure}[t]
@@ -66,7 +66,7 @@ hallucinat* OR overconfiden*)}}
   \node[font=\footnotesize\bfseries] (c) at (0, 0.02) {\buscaSete};
   \draw[->,gray] (2.05,-0.55) node[right,align=left,black]{este\\trabalho} -- (0.22,0.0);
 \end{tikzpicture}
-\caption{Estudos encontrados na \textbf{[biblioteca]} (2021 em diante) para cada combinação dos três temas. Cada busca une com AND o
+\caption{Estudos encontrados na IEEE Xplore (campo \textit{Abstract}, 2021 em diante) para cada combinação dos três temas. Cada busca une com AND o
 bloco N e os blocos de cada região. N: \texttt{"deep learning" OR CNN}; E: \texttt{uncertainty
 OR confidence OR certainty OR hallucinat* OR overconfiden*}; F: \texttt{fuzzy}; I: \texttt{"intermediate layer*" OR "internal
 representation*" OR "intermediate feature*" OR "linear probe*" OR "probing classifier*" OR "layer-wise"}.}
