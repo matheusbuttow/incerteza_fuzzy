@@ -386,6 +386,46 @@ hallucinat* OR overconfiden*)}}
 \end{center}
 % (ScienceDirect não aceita * e limita os conectores: se a string foi adaptada lá, citar em uma frase.)
 
+% ---------------------------------------------------------------------
+% DIAGRAMA DE VENN — digite aqui os TOTAIS das 7 buscas (Scopus, 2021 em diante).
+% Cada busca já inclui o bloco de redes neurais. O diagrama calcula sozinho o número de cada região.
+\newcommand{\buscaUm}{0}     % 1: só erro confiante      (N AND E)
+\newcommand{\buscaDois}{0}   % 2: só fuzzy               (N AND F)
+\newcommand{\buscaTres}{0}   % 3: só ruído               (N AND R)
+\newcommand{\buscaQuatro}{0} % 4: erro confiante + fuzzy (N AND E AND F) = a string principal acima
+\newcommand{\buscaCinco}{0}  % 5: erro confiante + ruído (N AND E AND R)
+\newcommand{\buscaSeis}{0}   % 6: fuzzy + ruído          (N AND F AND R)
+\newcommand{\buscaSete}{0}   % 7: os três juntos         (N AND E AND F AND R)
+% ---------------------------------------------------------------------
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[font=\footnotesize]
+  \def\r{1.32}
+  \fill[blue!60,opacity=0.18]   (-0.72, 0.42) circle (\r);
+  \fill[orange!80,opacity=0.18] ( 0.72, 0.42) circle (\r);
+  \fill[green!50!black,opacity=0.15] (0,-0.80) circle (\r);
+  \draw[blue!60!black]   (-0.72, 0.42) circle (\r);
+  \draw[orange!80!black] ( 0.72, 0.42) circle (\r);
+  \draw[green!40!black]  (0,-0.80) circle (\r);
+  \node[align=center,blue!50!black]   at (-2.05, 2.05) {Incerteza /\\erro confiante};
+  \node[orange!70!black]              at ( 1.65, 1.95) {Fuzzy};
+  \node[green!35!black]               at ( 0,-2.40) {Rótulos ruidosos};
+  % regiões exclusivas (inclusão--exclusão sobre os 7 totais)
+  \node at (-1.25, 0.70) {\the\numexpr\buscaUm-\buscaQuatro-\buscaCinco+\buscaSete\relax};
+  \node at ( 1.25, 0.70) {\the\numexpr\buscaDois-\buscaQuatro-\buscaSeis+\buscaSete\relax};
+  \node at ( 0,-1.30)    {\the\numexpr\buscaTres-\buscaCinco-\buscaSeis+\buscaSete\relax};
+  \node at ( 0, 0.85)    {\the\numexpr\buscaQuatro-\buscaSete\relax};
+  \node at (-0.78,-0.40) {\the\numexpr\buscaCinco-\buscaSete\relax};
+  \node at ( 0.78,-0.40) {\the\numexpr\buscaSeis-\buscaSete\relax};
+  \node[font=\footnotesize\bfseries] (c) at (0, 0.02) {\buscaSete};
+  \draw[->,gray] (2.05,-0.55) node[right,align=left,black]{este\\trabalho} -- (0.22,0.0);
+\end{tikzpicture}
+\caption{Estudos encontrados na Scopus (2021 em diante) para cada combinação dos três temas. Todas as buscas incluem o bloco de redes
+neurais.}
+\label{fig:venn}
+\end{figure}
+% (Escreva aqui 1–2 frases sobre a Fig.~\ref{fig:venn}: cada tema sozinho tem muitos estudos; a interseção dos três tem N.)
+
 The search string was used to filter articles in the following digital libraries: ACM Digital Library, IEEE Xplore, ScienceDirect and
 Scopus. After the initial compilation of studies from the libraries, the articles were directly exported to Parsifal, with a total amount
 of \textbf{XXXX} studies selected at the import stage.
