@@ -72,7 +72,11 @@ def por_rodada(lista, frac_conf):
     A, W, CF = [], [], []
     for exp, sem, d in lista:
         ds, arq = C.GRADE_INFO[exp]
-        E = pd.read_csv(d / "escores.csv.gz"); F = pd.read_csv(d / "features.csv.gz")
+        try:
+            E = pd.read_csv(d / "escores.csv.gz"); F = pd.read_csv(d / "features.csv.gz")
+        except Exception as err:          # arquivo estragado: avisa e segue (python conferir_resultados.py lista e conserta)
+            print(f"  *** {exp} semente {sem}: arquivo estragado ({type(err).__name__}) — pulando; rode conferir_resultados.py")
+            continue
         y = E.erro.values.astype(int)
         if y.sum() < 10 or (1 - y).sum() < 10:
             print(f"  (pulando {exp} semente {sem}: {y.sum()} erros e {(1 - y).sum()} acertos — poucos para comparar)"); continue

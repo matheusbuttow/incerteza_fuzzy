@@ -13,6 +13,11 @@
 cd "$(dirname "$0")"
 [ -f .venv/bin/activate ] && source .venv/bin/activate
 
+# não deixa rodar duas cópias ao mesmo tempo (duas cópias escrevendo o mesmo arquivo estragam os resultados)
+exec 9>.rodar_3dias.lock
+flock -n 9 || { echo "ERRO: já existe outra cópia do rodar_3dias.sh rodando (veja com: pgrep -af rodar)."; exit 1; }
+python conferir_resultados.py || true
+
 python -c "import torch; assert torch.cuda.is_available(), 'sem GPU'; print('GPU:', torch.cuda.get_device_name(0))" \
   || { echo "ERRO: o PyTorch não vê a GPU (ative o .venv?)"; exit 1; }
 echo "disco livre: $(df -h . | awk 'NR==2{print $4}')"
