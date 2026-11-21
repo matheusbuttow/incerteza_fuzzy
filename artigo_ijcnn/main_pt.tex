@@ -234,7 +234,8 @@ fração da rede percorrida até o último bloco que ainda discordava; vale 0 qu
 predição de Baldock et al.~\cite{baldock2021}. A \emph{entropia média das sondas} $\bar H$ (Eq.~\ref{eq:ent}), normalizada para $[0,1]$,
 mede o quanto os blocos ficaram indecisos ao longo do caminho, mesmo sem cruzar a fronteira. A \emph{concordância final} $A$
 (Eq.~\ref{eq:conc}) é a média do último terço do caminho, $\mathcal{L} = \{B - \lfloor B/3 \rfloor + 1, \dots, B\}$: se a rede responde com confiança mas o fim do caminho não concorda, há algo
-errado. Por fim, o \emph{salto final} $J$ (Eq.~\ref{eq:salto}) compara a confiança da cabeça, $p_{\hat y}$, com a do último bloco; um salto
+errado. $D$ e $A$ têm apoio direto na literatura: exemplos mal rotulados são decididos tarde na rede~\cite{baldock2021}, e a
+memorização de rótulos errados se concentra nas camadas profundas, com as iniciais quase intactas~\cite{stephenson2021}. Por fim, o \emph{salto final} $J$ (Eq.~\ref{eq:salto}) compara a confiança da cabeça, $p_{\hat y}$, com a do último bloco; um salto
 grande indica que a certeza apareceu só na cabeça. Na Fig.~\ref{fig:sigmoide}b, a alucinação tem $\mathrm{TV}=5$ e $D=12/18$, enquanto o acerto tem
 $\mathrm{TV}=0$ e $D=0$; as duas terminam com $A$ e $p$ altos, e é só o caminho que revela a hesitação.
 

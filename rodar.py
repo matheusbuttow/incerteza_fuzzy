@@ -106,6 +106,12 @@ def rodar_um(exp, semente, disp, refazer):
         ext["atrib"] = fo.atribuicoes(rede, ext["penultima"], tab["decisao"].values, disp)
         np.savez_compressed(pasta / "extras.npz", **ext)
 
+    if "probs_blocos" not in ext:                                  # classes por bloco (melhoria 5: correção no ALARME)
+        log("  lendo as classes que cada bloco aponta (uma passada na referência e uma no teste)...")
+        lr = LeitorRede(rede, conj.n_classes, info["limiar"], conj.vistas, disp, lote)
+        ext["probs_blocos"] = lr.probs_blocos(conj.treino_ref, conj.y_ref, conj.teste, log)
+        np.savez_compressed(pasta / "extras.npz", **ext)
+
     # 3) comparação -------------------------------------------------------------------------------------
     if (pasta / "metricas.csv").exists() and refazer not in ("tudo", "rede", "leitura", "avaliacao"):
         log("  avaliação já feita (use --refazer avaliacao para refazer)")

@@ -145,6 +145,20 @@ class LeitorRede:
         self.A_ref, self.y_ref = A, y_ref                                       # Font et al.
         return self
 
+    def probs_blocos(self, ds_ref, y_ref, ds_teste, log=print):
+        """Distribuição de classes que uma sonda treinada com o RÓTULO dá em cada bloco: (n_teste, B, K), em float16.
+        Serve para a correção na zona ALARME e para a Choquet sobre a profundidade (analise_correcao.py).
+        Uma passada na referência + uma no teste, sem as vistas; acrescentada a rodadas antigas sem retreinar a rede."""
+        A, _, _ = self._ler(ds_ref)
+        y_ref = np.asarray(y_ref).astype(int)
+        sondas = [self._probe(a, y_ref) for a in A]
+        At, _, _ = self._ler(ds_teste)
+        out = np.zeros((len(At[0]), self.B, self.K), np.float16)
+        for k, (sd, a) in enumerate(zip(sondas, At)):
+            out[:, k, sd.classes_] = sd.predict_proba(a)
+        log(f"  classes por bloco salvas ({self.B} blocos × {self.K} classes)")
+        return out
+
     def preparar_banco(self, ds_ref):
         """Só o banco de vizinhos (penúltima da referência + decisões), sem as sondas: uma passada rápida.
         Usado para acrescentar as pistas NOVAS a rodadas já lidas, sem reler o teste."""

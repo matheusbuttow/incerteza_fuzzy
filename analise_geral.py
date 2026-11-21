@@ -57,6 +57,26 @@ def delong(y, s1, s2):
     return auc[0], auc[1], 2 * norm.sf(abs(auc[0] - auc[1]) / np.sqrt(var))
 
 
+# ----------------------------------------------------------------------------- risco-cobertura e calibração do risco
+NOSSO_G = "NOSSO: Fuzzy aditivo (com guarda)"
+RISCO_PROB = {NOSSO: NOSSO, NOSSO_1P: NOSSO_1P, "Softmax (MSP)": "Softmax (MSP)"}   # notas que já são uma probabilidade de erro
+
+
+def aurc(y, s):
+    """Área sob a curva risco-cobertura (Geifman et al.; Jaeger et al. 2023): aceita primeiro as imagens de menor risco previsto
+    e mede o erro acumulado. E-AURC = AURC − AURC do ordenamento perfeito (todos os erros por último). Menor = melhor."""
+    o = np.argsort(s, kind="stable"); e = y[o].astype(float)
+    a = np.mean(np.cumsum(e) / np.arange(1, len(e) + 1)); r = y.mean()
+    otimo = r + (1 - r) * np.log(1 - r) if r < 1 else 1.0
+    return a, a - otimo
+
+
+def ece(y, p, bins=15):
+    """Erro de calibração esperado do RISCO previsto: em cada faixa de risco, |taxa real de erro − risco médio previsto|."""
+    p = np.clip(np.asarray(p, float), 0, 1); b = np.minimum((p * bins).astype(int), bins - 1)
+    return sum(abs(y[b == k].mean() - p[b == k].mean()) * (b == k).mean() for k in range(bins) if (b == k).any())
+
+
 # ----------------------------------------------------------------------------- leitura
 def rodadas(pasta):
     out = []
@@ -83,8 +103,12 @@ def por_rodada(lista, frac_conf):
         metodos = [m for m in [NOSSO, NOSSO_1P] + list(LIT) if m in E and E[m].notna().all()]
         base = {"experimento": exp, "dataset": ds, "rede": arq, "semente": sem, "erro da rede": y.mean(),
                 "rótulos de treino errados": C.GRADE_DADOS[ds][4], "imagens": len(y), "erros": int(y.sum())}
-        for m in metodos:
-            A.append({**base, "método": m, "AUROC": roc_auc_score(y, E[m]), "AUPR-erro": average_precision_score(y, E[m])})
+        # guarda (melhoria 4): com poucos erros para aprender, o sistema devolve a própria softmax
+        E[NOSSO_G] = E[NOSSO] if y.sum() >= C.ERROS_MIN_FUZZY else E["Softmax (MSP)"]
+        for m in metodos + [NOSSO_G]:
+            au, eau = aurc(y, E[m].values)
+            A.append({**base, "método": m, "AUROC": roc_auc_score(y, E[m]), "AUPR-erro": average_precision_score(y, E[m]),
+                      "AURC": au, "E-AURC": eau, "ECE do risco": ece(y, E[m].values) if m in RISCO_PROB or m == NOSSO_G else np.nan})
         for m in [m for m in metodos if m in LIT]:                              # DeLong: nosso × cada método da literatura
             a1, a2, p = delong(y, E[NOSSO].values, E[m].values)
             W.append({**base, "método": m, "família": LIT[m], "AUROC nosso": a1, "AUROC método": a2, "diferença": a1 - a2, "p": p,
@@ -99,7 +123,7 @@ def por_rodada(lista, frac_conf):
             for m in metodos:
                 lin[m] = roc_auc_score(yg, E[m].values[g])
             CF.append(lin)
-        print(f"  {exp:28s} semente {sem}: erro {y.mean():.3f} | nosso {A[-len(metodos)]['AUROC']:.3f}", flush=True)
+        print(f"  {exp:28s} semente {sem}: erro {y.mean():.3f} | nosso {A[-len(metodos) - 1]['AUROC']:.3f}", flush=True)
     return pd.DataFrame(A), pd.DataFrame(W), pd.DataFrame(CF)
 
 
@@ -183,6 +207,17 @@ def main():
     fried = friedmanchisquare(*[T[m].values for m in met]) if N >= 2 and k >= 3 else None
     cd = Q05.get(k, np.nan) * np.sqrt(k * (k + 1) / (6 * N)) if N >= 2 else np.nan
 
+    # risco-cobertura (melhoria 2): E-AURC por célula e posto médio (menor E-AURC = melhor)
+    TE = A.pivot_table(index=["dataset", "rede"], columns="método", values="E-AURC")
+    metE = [m for m in [NOSSO] + lit if m in TE and TE[m].notna().all()]
+    postosE = TE[metE].rank(axis=1, ascending=True).mean().sort_values()
+    # calibração do risco (melhoria 3) e guarda (melhoria 4)
+    TC = A.pivot_table(index=["dataset", "rede"], columns="método", values="ECE do risco")
+    TG = T[[NOSSO, NOSSO_G, "Softmax (MSP)"]].copy() if NOSSO_G in T else pd.DataFrame()
+    extra = info.join(TE[[m for m in [NOSSO, NOSSO_G, "Softmax (MSP)", "Chen et al. 2019"] if m in TE]].add_prefix("E-AURC × 1000: ") * 1000) \
+                .join(TC[[m for m in [NOSSO, NOSSO_1P, "Softmax (MSP)"] if m in TC]].add_prefix("ECE do risco: ")) \
+                .join(TG.add_prefix("AUROC: ")) if len(TG) else info
+
     # vitórias / empates / derrotas contra cada método (DeLong por rodada)
     V = W.groupby(["método", "família"]).resultado.value_counts().unstack(fill_value=0) \
          .reindex(columns=["vitória", "empate", "derrota"], fill_value=0)
@@ -223,6 +258,9 @@ def main():
         pd.DataFrame({"posto médio": postos, "família": [LIT.get(m, "nosso") for m in postos.index]}).round(3) \
           .to_excel(xw, sheet_name="postos")
         corr.round(4).to_excel(xw, sheet_name="ganho_vs_ruido", index=False)
+        extra.round(4).to_excel(xw, sheet_name="aurc_ece_guarda")
+        pd.DataFrame({"posto médio (E-AURC)": postosE, "família": [LIT.get(m, "nosso") for m in postosE.index]}).round(3) \
+          .to_excel(xw, sheet_name="postos_eaurc")
         por_rede.round(4).to_excel(xw, sheet_name="por_rede"); por_ds.round(4).to_excel(xw, sheet_name="por_dataset")
         if len(conf):
             conf.round(4).to_excel(xw, sheet_name="erro_confiante")
@@ -301,6 +339,20 @@ def main():
         g1 = (T[NOSSO_1P] - T["Softmax (MSP)"]).mean()
         L.append(f"\n9. VERSÃO DE UMA PASSADA (sem as vistas): ganho médio sobre o softmax {g1:+.3f} "
                  f"(com vistas: {cel['ganho sobre o softmax'].mean():+.3f}).")
+    L.append(f"\n10. RISCO-COBERTURA (E-AURC, menor = melhor; o protocolo de Jaeger et al. 2023): posto médio do nosso "
+             f"{postosE.get(NOSSO, np.nan):.2f} entre {len(metE)}; os 3 primeiros: " + ", ".join(f"{m} {v:.2f}" for m, v in postosE.head(3).items()) + ".")
+    if NOSSO in TE and "Softmax (MSP)" in TE:
+        L.append(f"    E-AURC × 1000 médio: nosso {1000 * TE[NOSSO].mean():.1f} × softmax {1000 * TE['Softmax (MSP)'].mean():.1f}; "
+                 f"o nosso é menor em {(TE[NOSSO] < TE['Softmax (MSP)']).sum()} de {len(TE)} combinações.")
+    if NOSSO in TC and "Softmax (MSP)" in TC:
+        L.append(f"\n11. CALIBRAÇÃO DO RISCO (ECE, menor = melhor): nosso {TC[NOSSO].mean():.3f} × softmax (1 − p) "
+                 f"{TC['Softmax (MSP)'].mean():.3f}; o nosso é mais calibrado em {(TC[NOSSO] < TC['Softmax (MSP)']).sum()} de {len(TC)} combinações.")
+    if len(TG):
+        piores = (TG[NOSSO] - TG["Softmax (MSP)"]).nsmallest(3)
+        L.append(f"\n12. GUARDA (menos de {C.ERROS_MIN_FUZZY} erros → softmax): ativada em "
+                 f"{(A[A['método'] == NOSSO_G]['erros'] < C.ERROS_MIN_FUZZY).sum()} rodadas. AUROC média: sem guarda {TG[NOSSO].mean():.4f}, "
+                 f"com guarda {TG[NOSSO_G].mean():.4f}; pior caso contra o softmax: sem guarda {piores.iloc[0]:+.3f}, "
+                 f"com guarda {(TG[NOSSO_G] - TG['Softmax (MSP)']).min():+.3f}.")
     txt = "\n".join(l for l in L if l is not None)
     (pasta / "insights.txt").write_text(txt, encoding="utf-8")
     print("\n" + txt)

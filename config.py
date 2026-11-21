@@ -83,6 +83,9 @@ GRADE_DADOS = {
     "mnist32":          ("mnist32",  0.0,                    15,   "MNIST",                0.0),
     "animal10n":        ("animal10n", 0.0,                   60,   "ANIMAL-10N",           0.08),   # só roda se dados/animal10n existir
 }
+# guarda (melhoria 4): com menos erros que isto no conjunto de calibração, o fuzzy não tem exemplos para aprender
+# e o sistema devolve a própria confiança da rede (no MNIST a rede erra ~35 de 10.000 imagens)
+ERROS_MIN_FUZZY = 100
 GRADE_REDES = ["resnet32", "vgg16", "mobilenet_v2", "cnn"]
 # nomes que já existiam: reaproveitam o que já rodou em resultados/
 _ALIAS = {("cifar10", "resnet32"): "cifar10", ("cifar10", "vgg16"): "cifar10_vgg16", ("cifar10", "mobilenet_v2"): "cifar10_mobilenet",

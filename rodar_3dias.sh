@@ -40,5 +40,7 @@ for S in $SEMENTES; do
 done
 
 python relatorio.py --todos || true
+python analise_correcao.py || echo "(análise da correção falhou)"
+python analise_agregacao.py --jobs 4 || echo "(análise da agregação falhou)"
 echo "===== PRONTO — $(date) ====="
-echo "Mande: resultados/geral.xlsx  resultados/insights.txt  resultados/figuras/geral_*.png"
+echo "Mande: resultados/geral.xlsx  resultados/insights.txt  resultados/correcao.xlsx  resultados/agregacao.xlsx"
